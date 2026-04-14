@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { Toaster } from 'react-hot-toast';
 
 const Login = React.lazy(() => import('./Login'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
@@ -40,6 +41,7 @@ export default function App() {
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Suspense>
+                <Toaster position="top-right" />
             </SocketProvider>
         </Router>
     );

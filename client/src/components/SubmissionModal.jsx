@@ -112,6 +112,17 @@ const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{assignment.title}</h3>
               <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Upload your submission file</p>
+              {assignment.pdfFile && (
+                <a 
+                  href={`http://localhost:5001/${assignment.pdfFile}`} 
+                  download 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border border-indigo-100 dark:border-indigo-800"
+                >
+                  <i className="fas fa-file-download"></i> View Question Paper
+                </a>
+              )}
             </div>
             <button onClick={onClose} disabled={isUploading} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">
               <i className="fas fa-times"></i>

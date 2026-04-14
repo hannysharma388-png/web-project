@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Test from '../models/Test.js';
 import Assignment from '../models/Assignment.js';
 import Subject from '../models/Subject.js';
@@ -164,7 +165,7 @@ export const deleteSection = async (req, res) => {
 // Timetable
 export const getFacultyTimetable = async (req, res) => {
   try {
-    const timetable = await Timetable.find({ faculty: req.user.id })
+    const timetable = await Timetable.find({ faculty: new mongoose.Types.ObjectId(req.user.id) })
       .populate('faculty subject section', 'name code')
       .sort({ day: 1, startTime: 1 });
     res.json(timetable);
@@ -174,7 +175,13 @@ export const getFacultyTimetable = async (req, res) => {
 export const getStudentTimetable = async (req, res) => {
   try {
     // Determine student's section by finding the section that contains student's ID
-    const section = await Section.findOne({ students: req.user.id });
+    let section = await Section.findOne({ students: req.user.id });
+    
+    // Fallback: If not in students array, check if roleAttr matches section name
+    if (!section && req.user.roleAttr) {
+        section = await Section.findOne({ name: req.user.roleAttr });
+    }
+
     if (!section) return res.status(404).json({ error: 'Section not found for student' });
 
     const timetable = await Timetable.find({ section: section._id })
@@ -186,7 +193,12 @@ export const getStudentTimetable = async (req, res) => {
 
 export const getTimetable = async (req, res) => {
   try {
-    const timetable = await Timetable.find({})
+    const { section, faculty } = req.query;
+    let query = {};
+    if (section) query.section = section;
+    if (faculty) query.faculty = faculty;
+
+    const timetable = await Timetable.find(query)
       .populate('faculty subject section', 'name code')
       .sort({ day: 1, startTime: 1 });
     res.json(timetable);
@@ -195,7 +207,7 @@ export const getTimetable = async (req, res) => {
 
 export const createTimetable = async (req, res) => {
   try { 
-    const { day, startTime, endTime, faculty, section, subject } = req.body;
+    const { day, startTime, endTime, faculty, section, subject, room, sessionType } = req.body;
     
     // Convert string time "HH:mm" to comparable values (or just rely on string comparison if well formatted)
     // Check faculty conflict
@@ -229,7 +241,7 @@ export const createTimetable = async (req, res) => {
 
 export const updateTimetableSlot = async (req, res) => {
   try {
-    const { day, startTime, endTime, faculty, section, subject } = req.body;
+    const { day, startTime, endTime, faculty, section, subject, room, sessionType } = req.body;
     const existing = await Timetable.findById(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Slot not found' });
 

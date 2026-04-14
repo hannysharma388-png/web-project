@@ -9,10 +9,14 @@
 6. ✅ Faculty grading and feedback system
 7. ✅ Project fully functional
 
-## Login Credentials
-**Admin:** `admin@jis.edu` / `admin123` → /admin
-**Faculty:** e.g. `ramesh@jis.edu` / `faculty123` → /faculty  
-**Student:** e.g. `amit.patel@jis.edu` / `student123` → /student
+## Login Credentials (Verified from DB)
+| Role    | Email                        | Password   | Notes |
+|---------|------------------------------|------------|-------|
+| **Admin**  | `aarti.joshi.admin@jis.edu` | `admin123` |       |
+| **Faculty**| `neil.agarwal.fac@jis.edu`  | `faculty123` | First |
+| **Student**| `rudra.ahluwalia.stu@jis.edu`| `student123` | First |
+
+**Total**: 1 admin + 15 faculty + 120 students (passwords hashed)
 
 ## Status
 Ready to use! Open http://localhost:5174/ (Backend on http://localhost:5001)

@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import AttendanceTable from '../components/AttendanceTable';
 import TimetableGrid from '../components/TimetableGrid';
+import toast from 'react-hot-toast';
 
 export default function FacultyDashboard() {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('students');
     const [students, setStudents] = useState([]);
     const [tests, setTests] = useState([]);
@@ -24,7 +26,6 @@ export default function FacultyDashboard() {
     const [duration, setDuration] = useState('');
     const [file, setFile] = useState(null);
     const [questions, setQuestions] = useState([]);
-    const [toast, setToast] = useState('');
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(false);
 
@@ -77,9 +78,13 @@ export default function FacultyDashboard() {
         }
     };
 
-    const showToast = (msg) => {
-        setToast(msg);
-        setTimeout(() => setToast(''), 3000);
+    const showToast = (msg, type = 'success') => {
+        if (type === 'success') {
+            toast.success(msg);
+        } else {
+            toast.error(msg);
+            window.alert('Action Failed: ' + msg);
+        }
     };
 
     const handleLogout = () => {
@@ -200,10 +205,10 @@ export default function FacultyDashboard() {
                 <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
                     <h1 className="text-xl font-semibold text-gray-800">{activeTab?.toUpperCase() || 'DASHBOARD'}</h1>
                     <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white">{user.name.charAt(0)}</div>
+                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white">{user?.name?.charAt(0) || 'F'}</div>
                         <div>
-                            <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
+                            <p className="text-sm font-medium text-gray-800">{user?.name || 'Faculty'}</p>
+                            <p className="text-xs text-gray-500">{user?.email}</p>
                         </div>
                     </div>
                 </header>
@@ -225,7 +230,7 @@ export default function FacultyDashboard() {
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all"
                                 >
                                     <option value="">Choose Subject...</option>
-                                    {mySubjects.map(s => (
+                                    {mySubjects?.map(s => (
                                         <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
                                     ))}
                                 </select>
@@ -239,7 +244,7 @@ export default function FacultyDashboard() {
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <option value="">Choose Section...</option>
-                                    {mySections.map(s => (
+                                    {mySections?.map(s => (
                                         <option key={s._id} value={s._id}>{s.name} - {s.branch}</option>
                                     ))}
                                 </select>
@@ -269,11 +274,11 @@ export default function FacultyDashboard() {
                                             {initialLoading ? (
                                                 <tr><td colSpan="3" className="px-6 py-12 text-center">Loading students...</td></tr>
                                             ) : students.length > 0 ? (
-                                                students.map(s => (
+                                                students?.map(s => (
                                                     <tr key={s._id} className="hover:bg-gray-50 border-t border-gray-100">
                                                         <td className="px-6 py-4 font-medium">{s.name}</td>
                                                         <td className="px-6 py-4 text-gray-600">{s.email}</td>
-                                                        <td className="px-6 py-4"><span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold uppercase">{selectedSection ? mySections.find(sec => sec._id === selectedSection)?.name : '-'}</span></td>
+                                                        <td className="px-6 py-4"><span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold uppercase">{selectedSection ? mySections?.find(sec => sec._id === selectedSection)?.name : '-'}</span></td>
                                                     </tr>
                                                 ))
                                             ) : (
@@ -298,7 +303,7 @@ export default function FacultyDashboard() {
                                                     <div className="h-4 bg-gray-200 rounded w-full"></div>
                                                 </div>
                                             ))
-                                        ) : tests.map(t => (
+                                        ) : tests?.map(t => (
                                             <div key={t._id} className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all group">
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all">
@@ -309,7 +314,7 @@ export default function FacultyDashboard() {
                                                 <h3 className="text-lg font-bold text-gray-800">{t.title}</h3>
                                                 <div className="mt-4 flex flex-wrap gap-3">
                                                     <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
-                                                        <i className="far fa-calendar"></i> {new Date(t.dueDate).toLocaleDateString()}
+                                                        <i className="far fa-calendar"></i> {new Date(t.dueDate || t.deadline).toLocaleDateString()}
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                                                         <i className="fas fa-star"></i> {t.marks} Marks
@@ -335,7 +340,7 @@ export default function FacultyDashboard() {
                                                     <div className="h-4 bg-gray-200 rounded w-full"></div>
                                                 </div>
                                             ))
-                                        ) : assignments.map(a => (
+                                        ) : assignments?.map(a => (
                                             <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all group">
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -346,7 +351,7 @@ export default function FacultyDashboard() {
                                                 <h3 className="text-lg font-bold text-gray-800">{a.title}</h3>
                                                 <div className="mt-4 flex flex-wrap gap-3">
                                                     <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
-                                                        <i className="far fa-calendar-alt"></i> {new Date(a.deadline ? a.deadline : a.dueDate).toLocaleDateString()}
+                                                        <i className="far fa-calendar-alt"></i> {new Date(a.deadline || a.dueDate).toLocaleDateString()}
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                                                         <i className="fas fa-check-circle"></i> {a.marks} Marks
@@ -394,10 +399,10 @@ export default function FacultyDashboard() {
                     {/* Notices Tab */}
                     {activeTab === 'notices' && (
                         <div className="grid grid-cols-1 gap-6">
-                            {notices.map(n => (
+                            {notices?.map(n => (
                                 <div key={n._id} className="bg-white border rounded-xl p-6 shadow-sm">
                                     <h4 className="text-lg font-semibold">{n.title}</h4>
-                                    <p className="text-gray-600 mt-2">{n.content}</p>
+                                    <p className="text-gray-600 mt-2">{n.content} (Published: {new Date(n.date || n.createdAt).toLocaleDateString()})</p>
                                 </div>
                             ))}
                         </div>
@@ -461,14 +466,6 @@ export default function FacultyDashboard() {
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
-
-            {/* Toast */}
-            {toast && (
-                <div className="fixed bottom-5 right-5 bg-white rounded-xl shadow-2xl p-4 z-50 flex items-center gap-3">
-                    <i className="fas fa-check-circle text-emerald-500"></i>
-                    <p className="font-semibold text-gray-800">{toast}</p>
                 </div>
             )}
         </div>

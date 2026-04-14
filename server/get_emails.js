@@ -1,10 +1,15 @@
 import mongoose from 'mongoose';
-mongoose.connect('mongodb://localhost:27017/college').then(async () => {
-  const facs = await mongoose.connection.collection('users').find({role: 'faculty'}).limit(2).toArray();
-  const stus = await mongoose.connection.collection('users').find({role: 'student'}).limit(2).toArray();
-  console.log('--- FACULTY ---');
-  facs.forEach(f => console.log(f.name + ' : ' + f.email));
-  console.log('--- STUDENTS ---');
-  stus.forEach(s => console.log(s.name + ' : ' + s.email));
+import dotenv from 'dotenv';
+dotenv.config();
+
+const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jis_academic';
+
+mongoose.connect(uri).then(async () => {
+  const users = await mongoose.connection.collection('users').find({}).toArray();
+  console.log('--- ALL USERS ---');
+  users.forEach(u => console.log(`${u.role.toUpperCase()} | Name: ${u.name} | Email: ${u.email}`));
   process.exit(0);
+}).catch(err => {
+  console.error(err);
+  process.exit(1);
 });

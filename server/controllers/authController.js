@@ -5,7 +5,11 @@ import User from '../models/User.js';
 import RefreshToken from '../models/RefreshToken.js';
 
 const generateAccessToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '15m' });
+  return jwt.sign(
+    { id: user._id, role: user.role, roleAttr: user.roleAttr }, 
+    process.env.JWT_SECRET || 'secret', 
+    { expiresIn: '15m' }
+  );
 };
 
 export const loginUser = async (req, res) => {

@@ -42,6 +42,7 @@ export default function Login() {
             const message = err.response?.data?.message || err.response?.data?.error || 'Connection error. Ensure backend is running.';
             setError(message);
             toast.error(message);
+            window.alert('Login Failed: ' + message);
         } finally {
             setLoading(false);
         }

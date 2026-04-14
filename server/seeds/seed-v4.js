@@ -35,7 +35,7 @@ function getRandomName() {
 
 const seed = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/college');
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Clear existing data
@@ -91,10 +91,10 @@ const seed = async () => {
     ];
     const sections = await Section.insertMany(sectionsData);
 
-    // 2. Create Faculty (10 Faculties for 10 Subjects)
+    // 2. Create Faculty (15 Faculties)
     const facultyList = [];
     const facultyDepartments = ['Computer Science', 'Information Technology', 'Software Engineering'];
-    for(let i=0; i<10; i++) {
+    for(let i=0; i<15; i++) {
         const name = getRandomName();
         const fac = await User.create({
             name: name.full,
@@ -107,30 +107,67 @@ const seed = async () => {
     }
 
     // 3. Create Subjects & Link to Faculty/Sections
-    // Assignments map
     const subjectDefinitions = [
-        { name: 'DBMS', code: 'CS301', facIdx: 0, secIndices: [0, 1, 2, 3] }, // BCA-A, BCA-B, CSE-A, CSE-B
-        { name: 'Operating Systems', code: 'CS302', facIdx: 1, secIndices: [0, 1, 4, 5] }, // BCA, IT
-        { name: 'Java Programming', code: 'IT301', facIdx: 2, secIndices: [0, 1, 4, 5] }, // BCA, IT
-        { name: 'Data Structures', code: 'IT302', facIdx: 3, secIndices: [2, 3, 4, 5] }, // CSE, IT
-        { name: 'Computer Networks', code: 'CS401', facIdx: 4, secIndices: [2, 3, 4, 5] }, // CSE, IT
-        { name: 'Software Engineering', code: 'SE301', facIdx: 5, secIndices: [0, 1] }, // BCA
-        { name: 'Web Development', code: 'WD402', facIdx: 6, secIndices: [0, 1] }, // BCA
-        { name: 'Artificial Intelligence', code: 'AI501', facIdx: 7, secIndices: [2, 3] }, // CSE
-        { name: 'Machine Learning', code: 'ML502', facIdx: 8, secIndices: [2, 3] }, // CSE
-        { name: 'Cloud Computing', code: 'CC601', facIdx: 9, secIndices: [4, 5] } // IT
+        { name: 'DBMS', code: 'CS301', secIndices: [0, 1, 2, 3] },
+        { name: 'Operating Systems', code: 'CS302', secIndices: [0, 1, 4, 5] },
+        { name: 'Java Programming', code: 'IT301', secIndices: [0, 1, 4, 5] },
+        { name: 'Data Structures', code: 'IT302', secIndices: [2, 3, 4, 5] },
+        { name: 'Computer Networks', code: 'CS401', secIndices: [2, 3, 4, 5] },
+        { name: 'Software Engineering', code: 'SE301', secIndices: [0, 1] },
+        { name: 'Web Development', code: 'WD402', secIndices: [0, 1] },
+        { name: 'Artificial Intelligence', code: 'AI501', secIndices: [2, 3] },
+        { name: 'Machine Learning', code: 'ML502', secIndices: [2, 3] },
+        { name: 'Cloud Computing', code: 'CC601', secIndices: [4, 5] }
     ];
 
+    // Tracker to ensure every faculty member is assigned at least once
+    const assignedFacultyIds = new Set();
+    const facultyPool = [...facultyList];
+    
+    // Shuffle helper
+    const shuffle = (array) => array.sort(() => Math.random() - 0.5);
+    shuffle(facultyPool);
+
     const subjects = [];
-    for (const subDef of subjectDefinitions) {
+    for (let i = 0; i < subjectDefinitions.length; i++) {
+        const subDef = subjectDefinitions[i];
         const secIds = subDef.secIndices.map(idx => sections[idx]._id);
+        
+        // Pick primary faculty from pool if available, otherwise pick random
+        let subFaculty = [];
+        if (i < facultyPool.length) {
+            subFaculty.push(facultyPool[i]._id);
+            assignedFacultyIds.add(facultyPool[i]._id.toString());
+        } else {
+            const randomFac = facultyList[Math.floor(Math.random() * facultyList.length)];
+            subFaculty.push(randomFac._id);
+            assignedFacultyIds.add(randomFac._id.toString());
+        }
+
+        // 40% chance of having a second faculty member
+        if (Math.random() > 0.6) {
+           const secondFac = facultyList[Math.floor(Math.random() * facultyList.length)];
+           if (secondFac._id.toString() !== subFaculty[0].toString()) {
+               subFaculty.push(secondFac._id);
+               assignedFacultyIds.add(secondFac._id.toString());
+           }
+        }
+
         const sub = await Subject.create({
             name: subDef.name,
             code: subDef.code,
-            faculty: [facultyList[subDef.facIdx]._id],
+            faculty: subFaculty,
             sections: secIds
         });
         subjects.push(sub);
+    }
+
+    // Assign any remaining faculty members who weren't picked (unlikely but safe)
+    for (const fac of facultyList) {
+        if (!assignedFacultyIds.has(fac._id.toString())) {
+            const randomSub = subjects[Math.floor(Math.random() * subjects.length)];
+            await Subject.findByIdAndUpdate(randomSub._id, { $addToSet: { faculty: fac._id } });
+        }
     }
 
     // 4. Create Students (~20 per section -> 120 total)
@@ -171,7 +208,9 @@ const seed = async () => {
             let classesMapped = 0;
             for (let i = 0; i < shuffledSubjects.length && classesMapped < 5; i++) {
                 const sub = shuffledSubjects[i];
-                const facId = sub.faculty[0].toString();
+                // Randomly pick one of the faculty members assigned to this subject
+                const randomFac = sub.faculty[Math.floor(Math.random() * sub.faculty.length)];
+                const facId = randomFac.toString();
                 
                 // Find first available slot where both faculty and section are free
                 const startSlot = Math.floor(Math.random() * 5); // randomize search start
@@ -184,7 +223,7 @@ const seed = async () => {
                         daySchedule.push({
                             slotIdx,
                             facId,
-                            faculty: sub.faculty[0],
+                            faculty: randomFac,
                             subject: sub._id,
                             section: section._id,
                             day: day,
