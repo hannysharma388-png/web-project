@@ -12,7 +12,7 @@
 ## Login Credentials
 **Admin:** admin@jis.edu / `admin123` → /admin
 **Faculty:** e.g. rajesh.kumar@jis.edu / `college123` → /faculty  
-**Student:** e.g. cse101-01@jis.edu / `college123` → /student
+**Student:** e.g. aarav.sharma@jis.edu / `college123` → /student
 
 ## Status
 Ready to use! Open http://localhost:5173/

@@ -25,10 +25,10 @@ const seed = async () => {
     await Test.deleteMany({});
     await Notice.deleteMany({});
 
-    // Create admin (Model middleware handles hashing)
+    // 1. Create Admin (Model middleware handles hashing)
     const adminData = {
-      name: 'System Administrator',
-      email: 'admin@jis.edu',
+      name: 'Harshit Sharma',
+      email: 'harshit.sharma@jis.edu',
       password: 'admin123',
       role: 'admin',
       roleAttr: ''
@@ -153,7 +153,6 @@ const seed = async () => {
     ]);
 
     console.log('✅ Seeding complete!');
-// console.log('Admins:', admins.map(a => `${a.email}/${a.password}`));
     // Print full lists
     console.log('\\n=== FACULTY LIST ===');
     faculty.forEach(f => console.log(`${f.name} (${f.email}/college123) - ${f.roleAttr}`));

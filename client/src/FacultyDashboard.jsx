@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from './context/ThemeContext';
+import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
+import EmptyState from './components/ui/EmptyState';
 import api from './utils/api';
 
 export default function FacultyDashboard() {
@@ -16,6 +20,7 @@ export default function FacultyDashboard() {
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceList, setAttendanceList] = useState([]);
     
+    const [isLoading, setIsLoading] = useState(true);
     const [modal, setModal] = useState({ show: false, type: '', data: null });
     const [title, setTitle] = useState('');
     const [grade, setGrade] = useState('');
@@ -26,7 +31,7 @@ export default function FacultyDashboard() {
     const [toast, setToast] = useState('');
 
     const navigate = useNavigate();
-    const API_BASE = 'http://localhost:5001/api';
+    const { isDarkMode, toggleTheme } = useTheme();
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -45,6 +50,7 @@ export default function FacultyDashboard() {
 
     const refreshData = async (userId) => {
         if (!userId) return;
+        setIsLoading(true);
         try {
             const stuRes = await api.get('/users?role=student');
             setStudents(Array.isArray(stuRes.data) ? stuRes.data : []);
@@ -72,6 +78,8 @@ export default function FacultyDashboard() {
         } catch (err) {
             console.error('API Error:', err);
             showToast('Error syncing data');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -156,14 +164,14 @@ export default function FacultyDashboard() {
     if (!user) return null;
 
     return (
-        <div className="bg-gray-50 font-inter dashboard-container flex">
+        <div className="bg-gray-50 dark:bg-slate-950 font-inter min-h-screen flex transition-colors duration-300">
             {/* Sidebar */}
-            <aside className="sidebar w-72 bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 text-white fixed h-screen flex flex-col shadow-2xl z-50">
-                <div className="sidebar-header p-6 border-b border-slate-700/50 flex flex-col">
-                    <h2 className="text-lg font-bold">JIS UNIVERSITY</h2>
-                    <p className="text-xs text-slate-400">Faculty Portal</p>
+            <aside className="w-72 bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:border-r border-slate-800 text-white fixed h-screen flex flex-col shadow-2xl z-50 transition-colors duration-300">
+                <div className="p-6 border-b border-slate-700/50">
+                    <h2 className="text-xl font-bold tracking-tight">JIS UNIVERSITY</h2>
+                    <p className="text-xs text-emerald-300 dark:text-slate-400 mt-1 uppercase font-semibold">Faculty Portal</p>
                 </div>
-                <nav className="sidebar-nav flex-1 py-4 overflow-y-auto">
+                <nav className="flex-1 py-6 overflow-y-auto space-y-1">
                     {[
                         { id: 'students', label: 'Student List', icon: 'fa-user-graduate' },
                         { id: 'attendance', label: 'Mark Attendance', icon: 'fa-calendar-check' },
@@ -173,334 +181,445 @@ export default function FacultyDashboard() {
                         { id: 'records', label: 'Records', icon: 'fa-clipboard-check' },
                         { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
                     ].map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`nav-item w-full flex items-center gap-3 px-5 py-3.5 mx-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-800/80 active' : 'hover:bg-slate-800/80'}`}>
-                            <i className={`fas ${tab.icon} shrink-0`}></i>
-                            <span>{tab.label}</span>
+                        <button 
+                            key={tab.id} 
+                            onClick={() => setActiveTab(tab.id)} 
+                            className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-200 border-l-4 ${activeTab === tab.id ? 'bg-emerald-800/50 dark:bg-emerald-900/40 border-emerald-500' : 'border-transparent hover:bg-white/5 hover:border-emerald-400/30'}`}
+                        >
+                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id ? 'text-emerald-400' : 'text-slate-400'}`}></i>
+                            <span className={`font-medium ${activeTab === tab.id ? 'text-white' : 'text-slate-300'}`}>{tab.label}</span>
                         </button>
                     ))}
                 </nav>
-                <div className="p-4 border-t border-slate-700/50">
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl hover:bg-red-500/20 text-red-400 transition-all">
-                        <i className="fas fa-sign-out-alt"></i><span>Logout</span>
+                <div className="p-6 border-t border-slate-700/50">
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-colors group">
+                        <i className="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i>
+                        <span className="font-medium">Sign Out</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="main-content flex-1 ml-72 min-h-screen">
-                <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <h1 className="text-xl font-semibold text-gray-800">{activeTab.toUpperCase()}</h1>
-                    <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white">{user.name.charAt(0)}</div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
+            <main className="flex-1 ml-72 flex flex-col min-h-screen">
+                <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-300 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white capitalize">{activeTab.replace('-', ' ')}</h1>
+                    <div className="flex items-center gap-6">
+                        <button 
+                            onClick={toggleTheme} 
+                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+                        </button>
+                        <div className="flex items-center gap-3 pr-4 border-r border-gray-200 dark:border-slate-700">
+                            <div className="text-right hidden md:block">
+                                <p className="text-sm font-bold text-gray-800 dark:text-white">{user.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 lowercase">{user.email}</p>
+                            </div>
+                            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-500/30">
+                                {user.name.charAt(0)}
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                <div className="tab-content p-8">
-                    {/* Students Tab */}
-                    {activeTab === 'students' && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="data-table w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Name</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Email</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Course</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {students.map(s => (
-                                        <tr key={s._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4">{s.name}</td>
-                                            <td className="px-6 py-4">{s.email}</td>
-                                            <td className="px-6 py-4">{s.roleAttr}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Attendance Tab */}
-                    {activeTab === 'attendance' && (
-                        <div className="max-w-4xl">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6 flex flex-wrap gap-4 items-end">
-                                <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Select Course</label>
-                                    <select 
-                                        className="w-full bg-gray-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
-                                        value={selectedCourse}
-                                        onChange={(e) => {
-                                            setSelectedCourse(e.target.value);
-                                            fetchCourseStudents(e.target.value);
-                                        }}
-                                    >
-                                        <option value="">Choose a course...</option>
-                                        {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Date</label>
-                                    <input 
-                                        type="date" 
-                                        className="w-full bg-gray-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
-                                        value={attendanceDate}
-                                        onChange={(e) => setAttendanceDate(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            {selectedCourse && (
-                                <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-gray-50 border-b">
-                                            <tr>
-                                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Student Name</th>
-                                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {attendanceList.map((s, idx) => (
-                                                <tr key={s.studentId} className="hover:bg-gray-50/50">
-                                                    <td className="px-6 py-4 font-medium">{s.name}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                                                            {['present', 'absent', 'late'].map(status => (
-                                                                <button
-                                                                    key={status}
-                                                                    onClick={() => {
-                                                                        const newList = [...attendanceList];
-                                                                        newList[idx].status = status;
-                                                                        setAttendanceList(newList);
-                                                                    }}
-                                                                    className={`px-3 py-1 rounded-md text-xs font-bold uppercase transition-all ${s.status === status ? (status === 'present' ? 'bg-emerald-500 text-white' : status === 'absent' ? 'bg-red-500 text-white' : 'bg-amber-500 text-white') : 'text-gray-400 hover:text-gray-600'}`}
-                                                                >
-                                                                    {status}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </td>
+                <div className="p-8 flex-1">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {/* Students Tab */}
+                            {activeTab === 'students' && (
+                                isLoading ? (
+                                    <SkeletonTable columns={3} rows={5} />
+                                ) : students.length === 0 ? (
+                                    <EmptyState title="No Students Found" message="Wait for admin to enroll students." icon="fa-user-graduate" />
+                                ) : (
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Email</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Course</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <div className="p-6 bg-gray-50 border-t flex justify-end">
-                                        <button onClick={handleAttendanceSubmit} className="bg-emerald-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all">Submit Attendance</button>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                                                {students.map(s => (
+                                                    <tr key={s._id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{s.name}</td>
+                                                        <td className="px-6 py-4 text-gray-600 dark:text-slate-300">{s.email}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="px-3 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-lg text-xs font-bold">{s.roleAttr}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
+                                )
+                            )}
+
+                            {/* Attendance Tab */}
+                            {activeTab === 'attendance' && (
+                                <div className="max-w-4xl mx-auto">
+                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 mb-6 flex flex-wrap gap-4 items-end">
+                                        <div className="flex-1 min-w-[200px]">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">Select Course</label>
+                                            <select 
+                                                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white transition-all"
+                                                value={selectedCourse}
+                                                onChange={(e) => {
+                                                    setSelectedCourse(e.target.value);
+                                                    fetchCourseStudents(e.target.value);
+                                                }}
+                                            >
+                                                <option value="">Choose a course...</option>
+                                                {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex-1 min-w-[200px]">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">Date</label>
+                                            <input 
+                                                type="date" 
+                                                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white transition-all"
+                                                value={attendanceDate}
+                                                onChange={(e) => setAttendanceDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {selectedCourse && (
+                                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Student Name</th>
+                                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                                                    {attendanceList.map((s, idx) => (
+                                                        <tr key={s.studentId} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{s.name}</td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <div className="inline-flex bg-gray-100 dark:bg-slate-900 rounded-lg p-1">
+                                                                    {['present', 'absent', 'late'].map(status => (
+                                                                        <button
+                                                                            key={status}
+                                                                            onClick={() => {
+                                                                                const newList = [...attendanceList];
+                                                                                newList[idx].status = status;
+                                                                                setAttendanceList(newList);
+                                                                            }}
+                                                                            className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${s.status === status ? (status === 'present' ? 'bg-emerald-500 text-white shadow-md' : status === 'absent' ? 'bg-red-500 text-white shadow-md' : 'bg-amber-500 text-white shadow-md') : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white'}`}
+                                                                        >
+                                                                            {status}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            <div className="p-6 bg-gray-50/50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700/50 flex justify-end">
+                                                <button onClick={handleAttendanceSubmit} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-none transition-all">Submit Attendance</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                        </div>
-                    )}
 
-                    {/* Timetable Tab */}
-                    {activeTab === 'timetable' && (
-                        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead className="bg-gray-50 border-b">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Day</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Period 1</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Period 2</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Period 3</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Period 4</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                                        <tr key={day} className="hover:bg-gray-50/50">
-                                            <td className="px-6 py-4 font-bold text-gray-700">{day}</td>
-                                            {[1, 2, 3, 4].map(period => {
-                                                const slot = timetable.find(t => t.day === day && t.period === period);
-                                                return (
-                                                    <td key={period} className="px-6 py-4">
-                                                        {slot ? (
-                                                            <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl">
-                                                                <p className="text-xs font-bold text-indigo-700 truncate">{slot.subject}</p>
-                                                                <p className="text-[10px] text-indigo-500 mt-1 uppercase font-bold">{slot.room}</p>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-gray-300 text-xs">---</span>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Tests Tab */}
-                    {activeTab === 'tests' && (
-                        <div>
-                            <button onClick={() => setModal({ show: true, type: 'test' })} className="mb-6 bg-purple-600 text-white px-6 py-2.5 rounded-xl hover:bg-purple-700">New Test</button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {tests.map(t => (
-                                    <div key={t._id} className="bg-white rounded-2xl p-6 shadow-sm border">
-                                        <h3 className="text-lg font-semibold">{t.title}</h3>
-                                        <p className="text-sm text-gray-500 mt-2">Due: {new Date(t.dueDate).toLocaleDateString()} | {t.marks} Marks</p>
-                                        <button onClick={() => deleteTest(t._id)} className="mt-4 text-red-500 text-sm">Delete</button>
+                            {/* Timetable Tab */}
+                            {activeTab === 'timetable' && (
+                                isLoading ? (
+                                    <SkeletonTable columns={4} rows={5} />
+                                ) : timetable.length === 0 ? (
+                                    <EmptyState title="No Timetable" message="No timetable generated for your courses yet." icon="fa-clock" />
+                                ) : (
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Day</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 1</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 2</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 3</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 4</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
+                                                    <tr key={day} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                                        <td className="px-6 py-4 font-bold text-gray-700 dark:text-white">{day}</td>
+                                                        {[1, 2, 3, 4].map(period => {
+                                                            const slot = timetable.find(t => t.day === day && t.period === period);
+                                                            return (
+                                                                <td key={period} className="px-6 py-4">
+                                                                    {slot ? (
+                                                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 p-4 rounded-xl">
+                                                                            <p className="text-sm font-bold text-indigo-700 dark:text-indigo-400 truncate">{slot.subject}</p>
+                                                                            <p className="text-xs text-indigo-500 dark:text-indigo-300 mt-1 uppercase font-bold tracking-wider">{slot.room}</p>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-gray-300 dark:text-slate-600 text-sm font-medium">---</span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                                )
+                            )}
 
-                    {/* Assignments Tab */}
-                    {activeTab === 'assignments' && (
-                        <div>
-                            <button onClick={() => setModal({ show: true, type: 'assignment' })} className="mb-6 bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700">New Assignment</button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {assignments.map(a => (
-                                    <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border">
-                                        <h3 className="text-lg font-semibold">{a.title}</h3>
-                                        <p className="text-sm text-gray-500 mt-2">Due: {new Date(a.dueDate).toLocaleDateString()} | {a.marks} Marks</p>
-                                        <button onClick={() => deleteAssignment(a._id)} className="mt-4 text-red-500 text-sm">Delete</button>
+                            {/* Tests Tab */}
+                            {activeTab === 'tests' && (
+                                <div>
+                                    <div className="flex justify-end mb-6">
+                                        <button onClick={() => setModal({ show: true, type: 'test' })} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2">
+                                            <i className="fas fa-plus text-sm"></i> New Test
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Records Tab */}
-                    {activeTab === 'records' && (
-                        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead className="bg-gray-50 border-b">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Student</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Work</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Submitted</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Grade</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {submissions.map(sub => (
-                                        <tr key={sub._id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{sub.studentId?.name || 'Unknown'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-gray-600 font-semibold">{sub.assignmentId?.title || sub.testId?.title}</span>
-                                                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
-                                                    {sub.assignmentId ? 'Assignment' : 'Test'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500">{new Date(sub.submittedAt).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4">
-                                                {sub.grade !== undefined ? (
-                                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">{sub.grade}</span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Pending</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <button 
-                                                    onClick={() => {
-                                                        setModal({ show: true, type: 'grade', data: sub });
-                                                        setGrade(sub.grade || '');
-                                                        setFeedback(sub.feedback || '');
-                                                    }}
-                                                    className="text-indigo-600 hover:text-indigo-900 font-medium text-sm flex items-center gap-1"
-                                                >
-                                                    <i className="fas fa-edit"></i> {sub.grade !== undefined ? 'Re-grade' : 'Grade'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Notices Tab */}
-                    {activeTab === 'notices' && (
-                        <div className="grid grid-cols-1 gap-6">
-                            {notices.map(n => (
-                                <div key={n._id} className="bg-white border rounded-xl p-6 shadow-sm">
-                                    <h4 className="text-lg font-semibold">{n.title}</h4>
-                                    <p className="text-gray-600 mt-2">{n.content}</p>
+                                    {isLoading ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+                                        </div>
+                                    ) : tests.length === 0 ? (
+                                        <EmptyState title="No Tests Created" message="You haven't created any tests yet." icon="fa-tasks" />
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {tests.map(t => (
+                                                <motion.div whileHover={{ y: -5 }} key={t._id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col justify-between">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t.title}</h3>
+                                                        <div className="flex gap-2 mt-4">
+                                                            <span className="px-2 py-1 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold">Due: {new Date(t.dueDate).toLocaleDateString()}</span>
+                                                            <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded text-xs font-bold">{t.marks} Marks</span>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => deleteTest(t._id)} className="mt-6 text-red-500 hover:text-red-600 dark:hover:text-red-400 text-sm font-semibold uppercase tracking-wider bg-red-50 dark:bg-red-900/20 py-2 rounded-lg transition-colors">Delete</button>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
+
+                            {/* Assignments Tab */}
+                            {activeTab === 'assignments' && (
+                                <div>
+                                    <div className="flex justify-end mb-6">
+                                        <button onClick={() => setModal({ show: true, type: 'assignment' })} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-200 dark:shadow-none transition-all flex items-center gap-2">
+                                            <i className="fas fa-plus text-sm"></i> New Assignment
+                                        </button>
+                                    </div>
+                                    {isLoading ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+                                        </div>
+                                    ) : assignments.length === 0 ? (
+                                        <EmptyState title="No Assignments" message="Create an assignment for your students to see it here." icon="fa-file-alt" />
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {assignments.map(a => (
+                                                <motion.div whileHover={{ y: -5 }} key={a._id} className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col justify-between">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{a.title}</h3>
+                                                        <div className="flex gap-2 mt-4">
+                                                            <span className="px-2 py-1 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded text-xs font-bold">Due: {new Date(a.dueDate).toLocaleDateString()}</span>
+                                                            <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded text-xs font-bold">{a.marks} Marks</span>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => deleteAssignment(a._id)} className="mt-6 text-red-500 hover:text-red-600 dark:hover:text-red-400 text-sm font-semibold uppercase tracking-wider bg-red-50 dark:bg-red-900/20 py-2 rounded-lg transition-colors">Delete</button>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Records Tab */}
+                            {activeTab === 'records' && (
+                                isLoading ? (
+                                    <SkeletonTable columns={5} rows={5} />
+                                ) : submissions.length === 0 ? (
+                                    <EmptyState title="No Records" message="No student submissions received yet." icon="fa-clipboard-check" />
+                                ) : (
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Work</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Submitted</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Grade</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                                                {submissions.map(sub => (
+                                                    <tr key={sub._id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{sub.studentId?.name || 'Unknown'}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold text-gray-900 dark:text-white">{sub.assignmentId?.title || sub.testId?.title}</span>
+                                                                <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-slate-400 tracking-wider mt-1">
+                                                                    {sub.assignmentId ? 'Assignment' : 'Test'}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">{new Date(sub.submittedAt).toLocaleDateString()}</td>
+                                                        <td className="px-6 py-4">
+                                                            {sub.grade !== undefined ? (
+                                                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-bold">{sub.grade}</span>
+                                                            ) : (
+                                                                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg text-xs font-bold">Pending</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setModal({ show: true, type: 'grade', data: sub });
+                                                                    setGrade(sub.grade || '');
+                                                                    setFeedback(sub.feedback || '');
+                                                                }}
+                                                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                                            >
+                                                                <i className="fas fa-edit"></i> {sub.grade !== undefined ? 'Re-grade' : 'Grade'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )
+                            )}
+
+                            {/* Notices Tab */}
+                            {activeTab === 'notices' && (
+                                isLoading ? (
+                                    <div className="grid gap-6">
+                                        {Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+                                    </div>
+                                ) : notices.length === 0 ? (
+                                    <EmptyState title="No Notices" message="Currently there are no announcements available." icon="fa-bullhorn" />
+                                ) : (
+                                    <div className="grid gap-6">
+                                        {notices.map(n => (
+                                            <motion.div whileHover={{ y: -2 }} key={n._id} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm relative overflow-hidden">
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+                                                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{n.title}</h4>
+                                                <p className="text-gray-600 dark:text-slate-300 leading-relaxed">{n.content}</p>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </main>
 
             {/* Modals */}
-            {modal.show && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full transform transition-all">
-                        {modal.type === 'grade' ? (
-                            <>
-                                <div className="flex justify-between items-start mb-6">
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-gray-900">Grade Submission</h3>
-                                        <p className="text-gray-500 text-sm mt-1">Student: {modal.data.studentId.name}</p>
+            <AnimatePresence>
+                {modal.show && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }} 
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-700 p-8 max-w-md w-full"
+                        >
+                            {modal.type === 'grade' ? (
+                                <>
+                                    <div className="flex justify-between items-start mb-6 border-b border-gray-100 dark:border-slate-700/50 pb-4">
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Grade Submission</h3>
+                                            <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{modal.data.studentId.name}</p>
+                                        </div>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                                            {modal.data.assignmentId ? 'Assignment' : 'Test'}
+                                        </div>
                                     </div>
-                                    <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
-                                        {modal.data.assignmentId ? 'Assignment' : 'Test'}
-                                    </div>
-                                </div>
-                                <form onSubmit={handleGradeSubmit} className="space-y-5">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Score</label>
-                                        <input 
-                                            type="number" 
-                                            value={grade}
-                                            onChange={e => setGrade(e.target.value)}
-                                            placeholder="Enter marks"
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Feedback</label>
-                                        <textarea 
-                                            value={feedback}
-                                            onChange={e => setFeedback(e.target.value)}
-                                            placeholder="Write your comments here..."
-                                            rows="4"
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none"
-                                        ></textarea>
-                                    </div>
-                                    <div className="flex gap-4 pt-2">
-                                        <button type="button" onClick={() => setModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-2xl font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
-                                        <button type="submit" className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 text-white py-3.5 rounded-2xl font-semibold hover:shadow-lg hover:shadow-indigo-200 transition-all">Save Result</button>
-                                    </div>
-                                </form>
-                            </>
-                        ) : (
-                            <>
-                                <h3 className="text-2xl font-bold mb-6 text-gray-900">Create New {modal.type === 'test' ? 'Test' : 'Assignment'}</h3>
-                                <form onSubmit={(e) => handleSubmit(e, modal.type)} className="space-y-4">
-                                    <input type="text" placeholder="Title" required onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" />
-                                    <input type="date" required onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" />
-                                    <input type="number" placeholder="Marks" required onChange={e => setMarks(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" />
-                                    {modal.type === 'test' && (
-                                        <input type="number" placeholder="Duration (mins)" onChange={e => setDuration(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" />
-                                    )}
-                                    <div className="flex gap-4 pt-2">
-                                        <button type="button" onClick={() => setModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-100 py-3 rounded-2xl font-semibold">Cancel</button>
-                                        <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-semibold">Publish</button>
-                                    </div>
-                                </form>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+                                    <form onSubmit={handleGradeSubmit} className="space-y-5">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Score</label>
+                                            <input 
+                                                type="number" 
+                                                value={grade}
+                                                onChange={e => setGrade(e.target.value)}
+                                                placeholder="Enter marks"
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white outline-none transition-all"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Feedback</label>
+                                            <textarea 
+                                                value={feedback}
+                                                onChange={e => setFeedback(e.target.value)}
+                                                placeholder="Write your comments here..."
+                                                rows="4"
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white outline-none transition-all resize-none"
+                                            ></textarea>
+                                        </div>
+                                        <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-slate-700/50">
+                                            <button type="button" onClick={() => setModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
+                                            <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none">Save Result</button>
+                                        </div>
+                                    </form>
+                                </>
+                            ) : (
+                                <>
+                                    <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white pb-4 border-b border-gray-100 dark:border-slate-700/50">Create New {modal.type === 'test' ? 'Test' : 'Assignment'}</h3>
+                                    <form onSubmit={(e) => handleSubmit(e, modal.type)} className="space-y-4">
+                                        <input type="text" placeholder="Title" required onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
+                                        <input type="date" required onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
+                                        <input type="number" placeholder="Marks" required onChange={e => setMarks(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
+                                        {modal.type === 'test' && (
+                                            <input type="number" placeholder="Duration (mins)" onChange={e => setDuration(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
+                                        )}
+                                        <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-slate-700/50 mt-4">
+                                            <button type="button" onClick={() => setModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
+                                            <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 dark:shadow-none transition-all">Publish</button>
+                                        </div>
+                                    </form>
+                                </>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Toast */}
-            {toast && (
-                <div className="fixed bottom-5 right-5 bg-white rounded-xl shadow-2xl p-4 z-50 flex items-center gap-3">
-                    <i className="fas fa-check-circle text-emerald-500"></i>
-                    <p className="font-semibold text-gray-800">{toast}</p>
-                </div>
-            )}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }} 
+                        animate={{ opacity: 1, y: 0, scale: 1 }} 
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        className="fixed bottom-6 right-6 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 p-4 z-50 flex items-center gap-4"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <i className="fas fa-check text-emerald-500"></i>
+                        </div>
+                        <p className="font-bold text-gray-800 dark:text-white">{toast}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
