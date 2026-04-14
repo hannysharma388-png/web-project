@@ -217,13 +217,16 @@ export default function AdminDashboard() {
                         >
                             {/* Dashboard Tab */}
                             {activeTab === 'dashboard' && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
                                     {isLoading ? (
-                                        Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+                                        </div>
                                     ) : (
                                         <>
-                                            <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 p-4 opacity-10">
                                                     <i className="fas fa-users text-8xl text-blue-500"></i>
                                                 </div>
                                                 <div className="w-12 h-12 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl flex items-center justify-center text-xl mb-4 relative z-10"><i className="fas fa-user-graduate"></i></div>
@@ -246,7 +249,7 @@ export default function AdminDashboard() {
                                                 <h3 className="text-3xl font-black text-gray-800 dark:text-white relative z-10">{notices.length}</h3>
                                                 <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 relative z-10">Active Notices</p>
                                             </motion.div>
-                                        </div>
+                                            </div>
                                         
                                         <div className="mt-8">
                                             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick System Controls</h2>
@@ -308,6 +311,7 @@ export default function AdminDashboard() {
                                                 </motion.button>
                                             </div>
                                         </div>
+                                        </>
                                     )}
                                 </div>
                             )}
