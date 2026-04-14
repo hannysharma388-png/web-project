@@ -5,6 +5,7 @@ import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
 import api from './utils/api';
+import TimetableGrid from './components/TimetableGrid';
 import { useSocket } from './context/SocketContext';
 import { toast as hotToast } from 'react-hot-toast';
 import SubmissionModal from './components/SubmissionModal';
@@ -12,6 +13,17 @@ import SubmissionModal from './components/SubmissionModal';
 export default function StudentDashboard() {
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    
+    const tabs = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'fa-home' },
+        { id: 'attendance', label: 'My Attendance', icon: 'fa-calendar-check' },
+        { id: 'timetable', label: 'Class Schedule', icon: 'fa-clock' },
+        { id: 'tests', label: 'My Tests', icon: 'fa-tasks' },
+        { id: 'assignments', label: 'Assignments', icon: 'fa-file-alt' },
+        { id: 'records', label: 'My Records', icon: 'fa-history' },
+        { id: 'notices', label: 'Notice Board', icon: 'fa-bullhorn' }
+    ];
     const [tests, setTests] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [notices, setNotices] = useState([]);
@@ -123,42 +135,56 @@ export default function StudentDashboard() {
 
     return (
         <div className="bg-gray-50 dark:bg-slate-950 font-inter min-h-screen flex transition-colors duration-300">
-            {/* Sidebar */}
-            <aside className="w-72 bg-gradient-to-b from-blue-900 via-indigo-900 to-slate-900 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:border-r border-slate-800 text-white fixed h-screen flex flex-col shadow-2xl z-50 transition-colors duration-300">
-                <div className="p-6 border-b border-slate-700/50">
-                    <h2 className="text-xl font-bold tracking-tight">JIS UNIVERSITY</h2>
-                    <p className="text-xs text-blue-300 dark:text-slate-400 mt-1 uppercase font-semibold">Student Portal</p>
+            {/* Sidebar (Desktop) */}
+            <aside className={`hidden md:flex flex-col fixed h-screen z-50 transition-all duration-300 ease-in-out bg-gradient-to-b from-blue-900 via-indigo-900 to-slate-900 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:border-r border-slate-800 text-white shadow-2xl ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
+                <div className="p-6 border-b border-slate-700/50 flex justify-between items-center h-20">
+                    {!isSidebarCollapsed && (
+                        <div>
+                            <h2 className="text-xl font-bold tracking-tight truncate">JIS UNIVERSITY</h2>
+                            <p className="text-xs text-blue-300 dark:text-slate-400 mt-1 uppercase font-semibold">Student Portal</p>
+                        </div>
+                    )}
+                    <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white outline-none flex-shrink-0">
+                        <i className={`fas ${isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
+                    </button>
                 </div>
-                <nav className="flex-1 py-6 overflow-y-auto space-y-1">
-                    {[
-                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-home' },
-                        { id: 'attendance', label: 'My Attendance', icon: 'fa-calendar-check' },
-                        { id: 'timetable', label: 'Class Schedule', icon: 'fa-clock' },
-                        { id: 'tests', label: 'My Tests', icon: 'fa-tasks' },
-                        { id: 'assignments', label: 'Assignments', icon: 'fa-file-alt' },
-                        { id: 'records', label: 'My Records', icon: 'fa-history' },
-                        { id: 'notices', label: 'Notice Board', icon: 'fa-bullhorn' }
-                    ].map(tab => (
+                <nav className="flex-1 py-6 overflow-y-auto space-y-1 overflow-x-hidden">
+                    {tabs.map(tab => (
                         <button 
                             key={tab.id} 
                             onClick={() => setActiveTab(tab.id)} 
-                            className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-200 border-l-4 ${activeTab === tab.id ? 'bg-blue-800/50 dark:bg-blue-900/40 border-blue-500' : 'border-transparent hover:bg-white/5 hover:border-blue-400/30'}`}
+                            className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-200 border-l-4 group ${activeTab === tab.id ? 'bg-blue-800/50 dark:bg-blue-900/40 border-blue-500' : 'border-transparent hover:bg-white/5 hover:border-blue-400/30'}`}
+                            title={isSidebarCollapsed ? tab.label : ''}
                         >
-                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id ? 'text-blue-400' : 'text-slate-400'}`}></i>
-                            <span className={`font-medium ${activeTab === tab.id ? 'text-white' : 'text-slate-300'}`}>{tab.label}</span>
+                            <i className={`fas ${tab.icon} w-5 text-center text-lg ${activeTab === tab.id ? 'text-blue-400' : 'text-slate-400'}`}></i>
+                            {!isSidebarCollapsed && <span className={`font-medium whitespace-nowrap ${activeTab === tab.id ? 'text-white' : 'text-slate-300'}`}>{tab.label}</span>}
                         </button>
                     ))}
                 </nav>
-                <div className="p-6 border-t border-slate-700/50">
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-colors group">
-                        <i className="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i>
-                        <span className="font-medium">Sign Out</span>
+                <div className="p-4 border-t border-slate-700/50">
+                    <button onClick={handleLogout} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-colors group`}>
+                        <i className="fas fa-sign-out-alt text-lg group-hover:-translate-x-1 transition-transform"></i>
+                        {!isSidebarCollapsed && <span className="font-medium whitespace-nowrap">Sign Out</span>}
                     </button>
                 </div>
             </aside>
 
+            {/* Mobile Bottom Navigation */}
+            <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 flex overflow-x-auto overflow-y-hidden text-center pb-safe">
+                {tabs.map(tab => (
+                     <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`min-w-[80px] h-16 flex-1 flex flex-col justify-center items-center gap-1 transition-colors px-2 border-t-2 ${activeTab === tab.id ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}
+                     >
+                        <i className={`fas ${tab.icon} text-lg`}></i>
+                        <span className="text-[10px] font-bold tracking-tight whitespace-nowrap truncate w-full max-w-[80px]">{tab.label}</span>
+                     </button>
+                ))}
+            </nav>
+
             {/* Main Content */}
-            <main className="flex-1 ml-72 flex flex-col min-h-screen">
+            <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out pb-16 md:pb-0 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'} ml-0`}>
                 <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-300 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white capitalize">{activeTab.replace('-', ' ')}</h1>
                     <div className="flex items-center gap-6">
@@ -191,28 +217,66 @@ export default function StudentDashboard() {
                         >
                             {/* Dashboard Tab */}
                             {activeTab === 'dashboard' && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {isLoading ? (
-                                        Array(3).fill(0).map((_, i) => <SkeletonCard key={i} />)
-                                    ) : (
-                                        <>
-                                            <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col items-center">
-                                                <div className="w-16 h-16 rounded-full border-4 border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center mb-4 relative">
-                                                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{calculateAttendance()}%</span>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Overview</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                        <motion.div whileHover={{ y: -5 }} className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl shadow-xl shadow-blue-500/20 text-white relative overflow-hidden flex items-center justify-between">
+                                            <div className="absolute -right-10 -bottom-10 opacity-10">
+                                                <i className="fas fa-calendar-check text-9xl"></i>
+                                            </div>
+                                            <div className="relative z-10">
+                                                <h3 className="text-lg font-medium text-blue-100 mb-1">Current Attendance</h3>
+                                                <div className="text-5xl font-black">{calculateAttendance()}%</div>
+                                            </div>
+                                            <div className={`relative z-10 w-20 h-20 rounded-full border-4 flex items-center justify-center text-3xl ${parseFloat(calculateAttendance()) > 75 ? 'border-emerald-400 text-emerald-400' : 'border-amber-400 text-amber-400'}`}>
+                                                <i className={`fas ${parseFloat(calculateAttendance()) > 75 ? 'fa-smile' : 'fa-exclamation-triangle'}`}></i>
+                                            </div>
+                                        </motion.div>
+
+                                        <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col justify-center">
+                                            <h3 className="text-gray-500 dark:text-slate-400 font-bold uppercase text-xs tracking-wider mb-4">Academic Workload</h3>
+                                            <div className="flex gap-4">
+                                                <div className="flex-1 bg-purple-50 dark:bg-purple-900/10 rounded-2xl p-4 border border-purple-100 dark:border-purple-800/30">
+                                                    <div className="text-purple-600 dark:text-purple-400 text-xl mb-2"><i className="fas fa-tasks"></i></div>
+                                                    <div className="text-3xl font-black text-gray-900 dark:text-white">{tests.length}</div>
+                                                    <div className="text-xs text-gray-500 dark:text-slate-400 font-bold mt-1">Pending Tests</div>
                                                 </div>
-                                                <h3 className="text-gray-800 dark:text-white font-bold text-lg">Attendance</h3>
-                                            </motion.div>
-                                            <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 text-center">
-                                                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center text-2xl mx-auto mb-4 border border-purple-100 dark:border-purple-800"><i className="fas fa-tasks"></i></div>
-                                                <h3 className="text-3xl font-black text-gray-800 dark:text-white">{tests.length}</h3>
-                                                <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1">Pending Tests</p>
-                                            </motion.div>
-                                            <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 text-center">
-                                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center text-2xl mx-auto mb-4 border border-indigo-100 dark:border-indigo-800"><i className="fas fa-file-alt"></i></div>
-                                                <h3 className="text-3xl font-black text-gray-800 dark:text-white">{assignments.length}</h3>
-                                                <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1">Pending Assignments</p>
-                                            </motion.div>
-                                        </>
+                                                <div className="flex-1 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/30">
+                                                    <div className="text-indigo-600 dark:text-indigo-400 text-xl mb-2"><i className="fas fa-file-alt"></i></div>
+                                                    <div className="text-3xl font-black text-gray-900 dark:text-white">{assignments.length}</div>
+                                                    <div className="text-xs text-gray-500 dark:text-slate-400 font-bold mt-1">Pending Assignments</div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Upcoming Deadlines</h2>
+                                    {isLoading ? (
+                                        <SkeletonTable columns={2} rows={3} />
+                                    ) : [...tests, ...assignments].length === 0 ? (
+                                        <EmptyState title="All Caught Up!" message="You have no upcoming tests or assignments." icon="fa-check-circle" />
+                                    ) : (
+                                        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700/50 p-6 md:p-12 pl-12 md:pl-0">
+                                            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-6 md:before:mx-auto md:before:translate-x-0 before:h-full before:w-1 before:bg-gradient-to-b before:from-transparent before:via-blue-200 dark:before:via-slate-700 before:to-transparent">
+                                                {[...tests, ...assignments].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).slice(0,4).map((item) => (
+                                                    <div key={item._id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                                        <div className="flex items-center justify-center w-12 h-12 rounded-full border-4 border-white dark:border-slate-900 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                                                            <i className={`fas ${item.duration ? 'fa-tasks' : 'fa-file-alt'} text-sm`}></i>
+                                                        </div>
+                                                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] p-5 rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800/50 shadow-sm hover:shadow-md transition-shadow">
+                                                            <div className="flex flex-col">
+                                                                <span className={`text-[10px] font-black uppercase tracking-wider mb-1 ${item.duration ? 'text-purple-500' : 'text-indigo-500'}`}>{item.duration ? 'Test' : 'Assignment'}</span>
+                                                                <h4 className="font-bold text-gray-900 dark:text-white text-lg leading-tight">{item.title}</h4>
+                                                                <div className="flex items-center gap-3 mt-3">
+                                                                    <div className="px-3 py-1 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold">Due: {new Date(item.dueDate).toLocaleDateString()}</div>
+                                                                    <div className="text-xs font-bold text-gray-500 dark:text-slate-400"><i className="fas fa-star mr-1 text-yellow-400"></i> {item.marks} marks</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -236,7 +300,7 @@ export default function StudentDashboard() {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                                 <table className="w-full text-left">
                                                     <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
                                                         <tr>
@@ -267,47 +331,7 @@ export default function StudentDashboard() {
 
                             {/* Timetable Tab */}
                             {activeTab === 'timetable' && (
-                                isLoading ? (
-                                    <SkeletonTable columns={4} rows={5} />
-                                ) : timetable.length === 0 ? (
-                                    <EmptyState title="No Timetable" message="Your class schedule is not available right now." icon="fa-clock" />
-                                ) : (
-                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
-                                                <tr>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Day</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 1</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 2</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 3</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 4</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                                                    <tr key={day} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
-                                                        <td className="px-6 py-4 font-bold text-gray-700 dark:text-white">{day}</td>
-                                                        {[1, 2, 3, 4].map(period => {
-                                                            const slot = timetable.find(t => t.day === day && t.period === period);
-                                                            return (
-                                                                <td key={period} className="px-6 py-4">
-                                                                    {slot ? (
-                                                                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-4 rounded-xl">
-                                                                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400 truncate">{slot.subject}</p>
-                                                                            <p className="text-[10px] text-blue-500 dark:text-blue-300 mt-1 uppercase font-bold tracking-wider">{slot.teacherId?.name || 'TBA'}</p>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-gray-300 dark:text-slate-600 text-sm font-medium">---</span>
-                                                                    )}
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )
+                                <TimetableGrid roleAttr="student" isEditable={false} />
                             )}
 
                             {/* Tests Tab */}

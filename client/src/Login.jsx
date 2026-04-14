@@ -8,6 +8,7 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const { setUser } = useAuth();
     const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function Login() {
 
         setLoading(true);
         try {
-            const res = await api.post('/auth/login', { email, password, role });
+            const res = await api.post('/auth/login', { email, password, role, rememberMe });
             const data = res.data;
             
             localStorage.setItem('token', data.token);
@@ -109,7 +110,12 @@ export default function Login() {
 
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center cursor-pointer">
-                                <input type="checkbox" className="w-4 h-4 border-gray-300 text-blue-900 focus:ring-blue-900" />
+                                <input 
+                                    type="checkbox" 
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="w-4 h-4 border-gray-300 text-blue-900 focus:ring-blue-900" 
+                                />
                                 <span className="ml-2 text-gray-600">Remember me</span>
                             </label>
                             <a href="#" className="text-blue-900 hover:underline">Forgot Password?</a>

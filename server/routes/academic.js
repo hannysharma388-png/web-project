@@ -4,7 +4,7 @@ import {
   getTests, createTest, deleteTest,
   getAssignments, createAssignment, deleteAssignment,
   getCourses, createCourse, deleteCourse,
-  getTimetable, createTimetable, deleteTimetable,
+  getTimetable, createTimetable, updateTimetableSlot, deleteTimetable,
   getAttendance, markAttendance,
   getSubmissions, createSubmission, updateSubmission 
 } from '../controllers/academicController.js';
@@ -33,6 +33,7 @@ router.delete('/courses/:id', deleteCourse);
 // Timetable
 router.get('/timetable', getTimetable);
 router.post('/timetable', createTimetable);
+router.patch('/timetable/:id', updateTimetableSlot);
 router.delete('/timetable/:id', deleteTimetable);
 
 // Attendance

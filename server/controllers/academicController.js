@@ -69,7 +69,48 @@ export const getTimetable = async (req, res) => {
 };
 
 export const createTimetable = async (req, res) => {
-  try { const tt = new Timetable(req.body); await tt.save(); res.status(201).json(tt); } catch(err) { res.status(500).json({error: err.message}); }
+  try { 
+    const { day, period, teacherId, classId, room } = req.body;
+    const teacherConflict = await Timetable.findOne({ day, period, teacherId });
+    if (teacherConflict) return res.status(400).json({ error: 'Teacher is already scheduled at this time.' });
+
+    const roomConflict = await Timetable.findOne({ day, period, room });
+    if (roomConflict) return res.status(400).json({ error: 'Room is already booked at this time.' });
+
+    const classConflict = await Timetable.findOne({ day, period, classId });
+    if (classConflict) return res.status(400).json({ error: 'Class already has a schedule at this time.' });
+
+    const tt = new Timetable(req.body); 
+    await tt.save(); 
+    const populatedTt = await Timetable.findById(tt._id).populate('teacherId classId', 'name');
+    res.status(201).json(populatedTt); 
+  } catch(err) { res.status(500).json({error: err.message}); }
+};
+
+export const updateTimetableSlot = async (req, res) => {
+  try {
+    const { day, period, teacherId, classId, room } = req.body;
+    const existing = await Timetable.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Slot not found' });
+
+    const checkDay = day || existing.day;
+    const checkPeriod = period || existing.period;
+    const checkTeacherId = teacherId || existing.teacherId;
+    const checkClassId = classId || existing.classId;
+    const checkRoom = room || existing.room;
+
+    const teacherConflict = await Timetable.findOne({ day: checkDay, period: checkPeriod, teacherId: checkTeacherId, _id: { $ne: req.params.id } });
+    if (teacherConflict) return res.status(400).json({ error: 'Teacher is already scheduled at this time.' });
+
+    const roomConflict = await Timetable.findOne({ day: checkDay, period: checkPeriod, room: checkRoom, _id: { $ne: req.params.id } });
+    if (roomConflict) return res.status(400).json({ error: 'Room is already booked at this time.' });
+    
+    const classConflict = await Timetable.findOne({ day: checkDay, period: checkPeriod, classId: checkClassId, _id: { $ne: req.params.id } });
+    if (classConflict) return res.status(400).json({ error: 'Class already has a schedule at this time.' });
+
+    const updated = await Timetable.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('teacherId classId', 'name');
+    res.json(updated);
+  } catch(err) { res.status(500).json({error: err.message}); }
 };
 
 export const deleteTimetable = async (req, res) => {

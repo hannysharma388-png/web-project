@@ -261,8 +261,9 @@ const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
                 </>
               )}
             </button>
-          </div >
+          </div>
         </motion.div>
+      </motion.div>
       )}
     </AnimatePresence>
   );

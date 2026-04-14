@@ -5,13 +5,27 @@ import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
 import AnalyticsView from './components/AnalyticsView';
+import TimetableGrid from './components/TimetableGrid';
 import api from './utils/api';
 import { useSocket } from './context/SocketContext';
 import { toast as hotToast } from 'react-hot-toast';
 
 export default function FacultyDashboard() {
     const [user, setUser] = useState(null);
-    const [activeTab, setActiveTab] = useState('students');
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    
+    const tabs = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'fa-home' },
+        { id: 'analytics', label: 'Analytics', icon: 'fa-chart-pie' },
+        { id: 'students', label: 'Students', icon: 'fa-user-graduate' },
+        { id: 'attendance', label: 'Attendance', icon: 'fa-calendar-check' },
+        { id: 'timetable', label: 'Timetable', icon: 'fa-clock' },
+        { id: 'tests', label: 'Manage Tests', icon: 'fa-tasks' },
+        { id: 'assignments', label: 'Assignments', icon: 'fa-file-alt' },
+        { id: 'records', label: 'Grading', icon: 'fa-check-double' },
+        { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
+    ];
     const [students, setStudents] = useState([]);
     const [tests, setTests] = useState([]);
     const [assignments, setAssignments] = useState([]);
@@ -187,43 +201,56 @@ export default function FacultyDashboard() {
 
     return (
         <div className="bg-gray-50 dark:bg-slate-950 font-inter min-h-screen flex transition-colors duration-300">
-            {/* Sidebar */}
-            <aside className="w-72 bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:border-r border-slate-800 text-white fixed h-screen flex flex-col shadow-2xl z-50 transition-colors duration-300">
-                <div className="p-6 border-b border-slate-700/50">
-                    <h2 className="text-xl font-bold tracking-tight">JIS UNIVERSITY</h2>
-                    <p className="text-xs text-emerald-300 dark:text-slate-400 mt-1 uppercase font-semibold">Faculty Portal</p>
+            {/* Sidebar (Desktop) */}
+            <aside className={`hidden md:flex flex-col fixed h-screen z-50 transition-all duration-300 ease-in-out bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:border-r border-slate-800 text-white shadow-2xl ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
+                <div className="p-6 border-b border-slate-700/50 flex justify-between items-center h-20">
+                    {!isSidebarCollapsed && (
+                        <div>
+                            <h2 className="text-xl font-bold tracking-tight truncate">JIS UNIVERSITY</h2>
+                            <p className="text-xs text-emerald-300 dark:text-slate-400 mt-1 uppercase font-semibold">Faculty Portal</p>
+                        </div>
+                    )}
+                    <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white outline-none flex-shrink-0">
+                        <i className={`fas ${isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
+                    </button>
                 </div>
-                <nav className="flex-1 py-6 overflow-y-auto space-y-1">
-                    {[
-                        { id: 'students', label: 'Student List', icon: 'fa-user-graduate' },
-                        { id: 'attendance', label: 'Mark Attendance', icon: 'fa-calendar-check' },
-                        { id: 'timetable', label: 'Timetable', icon: 'fa-clock' },
-                        { id: 'tests', label: 'Tests', icon: 'fa-tasks' },
-                        { id: 'assignments', label: 'Assignments', icon: 'fa-file-alt' },
-                        { id: 'records', label: 'Records', icon: 'fa-clipboard-check' },
-                        { id: 'analytics', label: 'Analytics', icon: 'fa-chart-pie' },
-                        { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
-                    ].map(tab => (
+                <nav className="flex-1 py-6 overflow-y-auto space-y-1 overflow-x-hidden w-full">
+                    {tabs.map(tab => (
                         <button 
                             key={tab.id} 
                             onClick={() => setActiveTab(tab.id)} 
-                            className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-200 border-l-4 ${activeTab === tab.id ? 'bg-emerald-800/50 dark:bg-emerald-900/40 border-emerald-500' : 'border-transparent hover:bg-white/5 hover:border-emerald-400/30'}`}
+                            className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-200 border-l-4 group ${activeTab === tab.id ? 'bg-emerald-800/50 dark:bg-emerald-900/40 border-emerald-500' : 'border-transparent hover:bg-white/5 hover:border-emerald-400/30'}`}
+                            title={isSidebarCollapsed ? tab.label : ''}
                         >
-                            <i className={`fas ${tab.icon} w-5 text-center ${activeTab === tab.id ? 'text-emerald-400' : 'text-slate-400'}`}></i>
-                            <span className={`font-medium ${activeTab === tab.id ? 'text-white' : 'text-slate-300'}`}>{tab.label}</span>
+                            <i className={`fas ${tab.icon} w-5 text-center text-lg ${activeTab === tab.id ? 'text-emerald-400' : 'text-slate-400'}`}></i>
+                            {!isSidebarCollapsed && <span className={`font-medium whitespace-nowrap ${activeTab === tab.id ? 'text-white' : 'text-slate-300'}`}>{tab.label}</span>}
                         </button>
                     ))}
                 </nav>
-                <div className="p-6 border-t border-slate-700/50">
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-colors group">
-                        <i className="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i>
-                        <span className="font-medium">Sign Out</span>
+                <div className="p-4 border-t border-slate-700/50">
+                    <button onClick={handleLogout} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-colors group`}>
+                        <i className="fas fa-sign-out-alt text-lg group-hover:-translate-x-1 transition-transform"></i>
+                        {!isSidebarCollapsed && <span className="font-medium whitespace-nowrap">Sign Out</span>}
                     </button>
                 </div>
             </aside>
 
+            {/* Mobile Bottom Navigation */}
+            <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 flex overflow-x-auto overflow-y-hidden text-center pb-safe">
+                {tabs.map(tab => (
+                     <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`min-w-[80px] h-16 flex-1 flex flex-col justify-center items-center gap-1 transition-colors px-2 border-t-2 ${activeTab === tab.id ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}
+                     >
+                        <i className={`fas ${tab.icon} text-lg`}></i>
+                        <span className="text-[10px] font-bold tracking-tight whitespace-nowrap truncate w-full max-w-[80px]">{tab.label}</span>
+                     </button>
+                ))}
+            </nav>
+
             {/* Main Content */}
-            <main className="flex-1 ml-72 flex flex-col min-h-screen">
+            <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out pb-16 md:pb-0 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'} ml-0`}>
                 <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-300 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white capitalize">{activeTab.replace('-', ' ')}</h1>
                     <div className="flex items-center gap-6">
@@ -254,6 +281,70 @@ export default function FacultyDashboard() {
                             exit={{ opacity: 0, y: -15 }}
                             transition={{ duration: 0.3 }}
                         >
+                            {/* Dashboard Tab */}
+                            {activeTab === 'dashboard' && (
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Faculty Hub</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                        <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                <i className="fas fa-chalkboard-teacher text-8xl text-emerald-500"></i>
+                                            </div>
+                                            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-xl flex items-center justify-center text-xl mb-4 relative z-10"><i className="fas fa-chalkboard-teacher"></i></div>
+                                            <h3 className="text-3xl font-black text-gray-800 dark:text-white relative z-10">{courses.length}</h3>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 relative z-10">Assigned Classes</p>
+                                        </motion.div>
+                                        <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                <i className="fas fa-users text-8xl text-cyan-500"></i>
+                                            </div>
+                                            <div className="w-12 h-12 bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400 rounded-xl flex items-center justify-center text-xl mb-4 relative z-10"><i className="fas fa-user-graduate"></i></div>
+                                            <h3 className="text-3xl font-black text-gray-800 dark:text-white relative z-10">{students.length}</h3>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 relative z-10">Students Overlooked</p>
+                                        </motion.div>
+                                        <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                <i className="fas fa-clipboard-check text-8xl text-indigo-500"></i>
+                                            </div>
+                                            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl flex items-center justify-center text-xl mb-4 relative z-10"><i className="fas fa-clipboard-check"></i></div>
+                                            <h3 className="text-3xl font-black text-gray-800 dark:text-white relative z-10">{submissions.filter(s => s.grade === undefined).length}</h3>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 relative z-10">Pending to Grade</p>
+                                        </motion.div>
+                                    </div>
+
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <motion.button 
+                                            whileHover={{ scale: 1.02 }}
+                                            onClick={() => setActiveTab('attendance')}
+                                            className="p-6 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl flex items-center gap-6 text-left transition-colors hover:bg-emerald-100 dark:hover:bg-emerald-900/30 group"
+                                        >
+                                            <div className="w-16 h-16 bg-emerald-600 dark:bg-emerald-500 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-transform group-hover:scale-110">
+                                                <i className="fas fa-calendar-check"></i>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors mb-1">Mark Attendance</h4>
+                                                <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">Record daily student presence automatically.</p>
+                                            </div>
+                                        </motion.button>
+                                        
+                                        <motion.button 
+                                            whileHover={{ scale: 1.02 }}
+                                            onClick={() => setActiveTab('records')}
+                                            className="p-6 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-2xl flex items-center gap-6 text-left transition-colors hover:bg-indigo-100 dark:hover:bg-indigo-900/30 group"
+                                        >
+                                            <div className="w-16 h-16 bg-indigo-600 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-200 dark:shadow-none transition-transform group-hover:scale-110">
+                                                <i className="fas fa-check-double"></i>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 transition-colors mb-1">Grade Submissions</h4>
+                                                <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">Review and evaluate uploaded assignments rapidly.</p>
+                                            </div>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Students Tab */}
                             {activeTab === 'students' && (
                                 isLoading ? (
@@ -261,7 +352,7 @@ export default function FacultyDashboard() {
                                 ) : students.length === 0 ? (
                                     <EmptyState title="No Students Found" message="Wait for admin to enroll students." icon="fa-user-graduate" />
                                 ) : (
-                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                         <table className="w-full text-left">
                                             <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
                                                 <tr>
@@ -316,7 +407,7 @@ export default function FacultyDashboard() {
                                     </div>
 
                                     {selectedCourse && (
-                                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                             <table className="w-full text-left">
                                                 <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
                                                     <tr>
@@ -359,47 +450,7 @@ export default function FacultyDashboard() {
 
                             {/* Timetable Tab */}
                             {activeTab === 'timetable' && (
-                                isLoading ? (
-                                    <SkeletonTable columns={4} rows={5} />
-                                ) : timetable.length === 0 ? (
-                                    <EmptyState title="No Timetable" message="No timetable generated for your courses yet." icon="fa-clock" />
-                                ) : (
-                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
-                                                <tr>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Day</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 1</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 2</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 3</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Period 4</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                                                    <tr key={day} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
-                                                        <td className="px-6 py-4 font-bold text-gray-700 dark:text-white">{day}</td>
-                                                        {[1, 2, 3, 4].map(period => {
-                                                            const slot = timetable.find(t => t.day === day && t.period === period);
-                                                            return (
-                                                                <td key={period} className="px-6 py-4">
-                                                                    {slot ? (
-                                                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 p-4 rounded-xl">
-                                                                            <p className="text-sm font-bold text-indigo-700 dark:text-indigo-400 truncate">{slot.subject}</p>
-                                                                            <p className="text-xs text-indigo-500 dark:text-indigo-300 mt-1 uppercase font-bold tracking-wider">{slot.room}</p>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-gray-300 dark:text-slate-600 text-sm font-medium">---</span>
-                                                                    )}
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )
+                                <TimetableGrid roleAttr="faculty" isEditable={true} />
                             )}
 
                             {/* Tests Tab */}
@@ -475,7 +526,7 @@ export default function FacultyDashboard() {
                                 ) : submissions.length === 0 ? (
                                     <EmptyState title="No Records" message="No student submissions received yet." icon="fa-clipboard-check" />
                                 ) : (
-                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-hidden">
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-x-auto overflow-y-hidden">
                                         <table className="w-full text-left">
                                             <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
                                                 <tr>

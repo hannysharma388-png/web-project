@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     BarChart, Bar,
@@ -56,8 +58,33 @@ export default function AnalyticsView({ role, userId }) {
     
     // UI state
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const [drilldown, setDrilldown] = useState(null);
+
+    const printRef = useRef(null);
+
+    const handleExportPDF = async () => {
+        const element = printRef.current;
+        if (!element) return;
+        
+        setIsExporting(true);
+        try {
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+            pdf.save(`Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (err) {
+            console.error('Failed to export PDF', err);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const handleDrilldown = (data, type) => {
         if (data) {
@@ -178,14 +205,19 @@ export default function AnalyticsView({ role, userId }) {
                         onChange={(e) => setEndDate(e.target.value)}
                     />
                 </div>
-                <div className="pl-4">
+                <div className="pl-4 flex gap-4">
                     <button onClick={fetchAnalytics} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-none transition-all">
                         {isLoading ? <i className="fas fa-spinner fa-spin"></i> : 'Apply'}
+                    </button>
+                    <button onClick={handleExportPDF} disabled={isExporting} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all disabled:opacity-70 flex items-center gap-2">
+                        {isExporting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-pdf"></i>}
+                        Export PDF
                     </button>
                 </div>
             </div>
 
-            {/* Top Charts: Pie Summary & Bar Drilldown (simulated as separate charts side by side) */}
+            <div ref={printRef} className="space-y-8 bg-gray-50 dark:bg-slate-950 p-4 rounded-3xl">
+                {/* Top Charts: Pie Summary & Bar Drilldown (simulated as separate charts side by side) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Summary Pie */}
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col items-center">
@@ -281,6 +313,7 @@ export default function AnalyticsView({ role, userId }) {
                 ) : (
                     <div className="w-full h-80 flex flex-col items-center justify-center text-gray-400"><i className="fas fa-chart-line text-4xl mb-4 text-gray-200"></i><p>No Data Available</p></div>
                 )}
+            </div>
             </div>
 
             {/* Drilldown Modal */}
