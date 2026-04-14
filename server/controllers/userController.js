@@ -1,10 +1,22 @@
 import User from '../models/User.js';
+import Section from '../models/Section.js';
 import bcrypt from 'bcrypt';
 
 export const getUsers = async (req, res) => {
   try {
-    const { role } = req.query;
-    const filter = role ? { role } : {};
+    const { role, section } = req.query;
+    const filter = {};
+    if (role) filter.role = role;
+
+    if (section && section !== 'undefined' && section !== 'null') {
+        const sectionDoc = await Section.findById(section);
+        if (sectionDoc && sectionDoc.students) {
+            filter._id = { $in: sectionDoc.students };
+        } else {
+            filter._id = null; // force empty result if section has no students or is invalid
+        }
+    }
+
     const users = await User.find(filter).select('-password');
     res.json(users);
   } catch (err) {

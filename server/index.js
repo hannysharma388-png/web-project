@@ -56,11 +56,11 @@ app.use((req, res, next) => {
 // Middleware
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-app.use(helmet()); // Security headers
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
   credentials: true
 }));
+app.use(helmet()); // Security headers
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

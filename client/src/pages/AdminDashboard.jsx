@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import AttendanceTable from '../components/AttendanceTable';
-import TimetableGrid from '../components/TimetableGrid';
 import ReportsChart from '../components/ReportsChart';
+import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
     // user from AuthContext
@@ -12,16 +11,18 @@ export default function AdminDashboard() {
     const [students, setStudents] = useState([]);
     const [faculty, setFaculty] = useState([]);
     const [notices, setNotices] = useState([]);
-    const [courses, setCourses] = useState([]);
-    const [timetable, setTimetable] = useState([]);
-    const [attendanceSummary, setAttendanceSummary] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+    const [sections, setSections] = useState([]);
     const [modal, setModal] = useState({ show: false, type: '' });
     
     const [formData, setFormData] = useState({ name: '', email: '', password: '', roleAttr: '' });
     const [noticeData, setNoticeData] = useState({ title: '', content: '' });
-    const [courseData, setCourseData] = useState({ name: '', code: '' });
-    const [selectedCourse, setSelectedCourse] = useState('');
+    const [subjectData, setSubjectData] = useState({ name: '', code: '' });
+    const [sectionData, setSectionData] = useState({ name: '', branch: '' });
+    const [selectedSubject, setSelectedSubject] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [reportData, setReportData] = useState({ attendance: [], grades: [] });
 
     const navigate = useNavigate();
     useEffect(() => {
@@ -39,13 +40,26 @@ export default function AdminDashboard() {
             const notRes = await api.get('/notices');
             setNotices(notRes.data);
 
-            const courseRes = await api.get('/academic/courses');
-            setCourses(courseRes.data);
+            const subRes = await api.get('/academic/subjects');
+            setSubjects(subRes.data);
 
-            const ttRes = await api.get('/academic/timetable');
-            setTimetable(ttRes.data);
+            const secRes = await api.get('/academic/sections');
+            setSections(secRes.data);
+
+            try {
+                const repRes = await api.get('/reports/attendance-summary');
+                const formattedAtt = Object.entries(repRes.data || {})
+                    .filter(([key]) => key !== 'totalDays')
+                    .map(([status, total]) => ({ _id: status, total }));
+                
+                const perfRes = await api.get('/reports/performance-metrics');
+                
+                setReportData({ attendance: formattedAtt, grades: Array.isArray(perfRes.data) ? perfRes.data : [] });
+            } catch (repErr) {
+                console.error('Reporting Fetch Error:', repErr);
+            }
         } catch (err) {
-            console.error('API Error:', err);
+            console.error('Main Dashboard Fetch Error:', err);
         }
     };
 
@@ -84,33 +98,31 @@ export default function AdminDashboard() {
         refreshData();
     };
 
-    const handleCourseSubmit = async (e) => {
+    const handleSubjectSubmit = async (e) => {
         e.preventDefault();
-        await api.post('/academic/courses', courseData);
+        await api.post('/academic/subjects', subjectData);
         setModal({ show: false, type: '' });
         refreshData();
     };
 
-    const getCourseStudents = (courseId) => {
-        const course = courses.find(c => c._id === courseId);
-        return course ? course.students : [];
+    const handleSectionSubmit = async (e) => {
+        e.preventDefault();
+        await api.post('/academic/sections', sectionData);
+        setModal({ show: false, type: '' });
+        refreshData();
     };
 
-    const handleMarkAttendance = async (data) => {
-        try {
-            await api.post('/academic/attendance/mark', data);
-        } catch (err) {
-            console.error(err);
-        }
+    const getSectionStudents = (sectionId) => {
+        const section = sections.find(s => s._id === sectionId);
+        return section ? section.students : [];
     };
 
     const sidebarTabs = [
         { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
         { id: 'students', label: 'Manage Students', icon: 'fa-user-graduate' },
         { id: 'faculty', label: 'Manage Faculty', icon: 'fa-chalkboard-teacher' },
-        { id: 'courses', label: 'Courses', icon: 'fa-book' },
-        { id: 'attendance', label: 'Attendance', icon: 'fa-calendar-check' },
-        { id: 'timetable', label: 'Timetable', icon: 'fa-table' },
+        { id: 'subjects', label: 'Subjects', icon: 'fa-book' },
+        { id: 'sections', label: 'Sections', icon: 'fa-layer-group' },
         { id: 'reports', label: 'Reports', icon: 'fa-chart-pie' },
         { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
     ];
@@ -140,7 +152,7 @@ export default function AdminDashboard() {
 
             <main className="main-content flex-1 ml-72 min-h-screen">
                 <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <h1 className="text-xl font-semibold text-gray-800">{activeTab.toUpperCase()}</h1>
+                    <h1 className="text-xl font-semibold text-gray-800">{activeTab?.toUpperCase() || 'DASHBOARD'}</h1>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white">{user.name.charAt(0)}</div>
                         <p className="text-sm font-medium">{user.name}</p>
@@ -158,14 +170,32 @@ export default function AdminDashboard() {
 
                     {activeTab === 'students' && (
                         <div>
-                            <button onClick={() => setModal({ show: true, type: 'student' })} className="mb-6 bg-indigo-600 text-white px-6 py-2.5 rounded-xl">Add Student</button>
+                            <div className="flex gap-4 mb-6">
+                                <button onClick={() => setModal({ show: true, type: 'student' })} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-medium">Add Student</button>
+                                <select 
+                                    value={selectedSection} 
+                                    onChange={(e) => setSelectedSection(e.target.value)} 
+                                    className="px-4 py-2 border border-gray-300 rounded-xl bg-white shadow-sm font-medium"
+                                >
+                                    <option value="">All Sections</option>
+                                    {sections.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                </select>
+                            </div>
                             <table className="w-full bg-white rounded-2xl shadow-sm border">
-                                <thead><tr><th className="px-6 py-4 text-left">Name</th><th className="px-6 py-4 text-left">Email</th><th className="px-6 py-4 text-left">Actions</th></tr></thead>
+                                <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-6 py-4 text-left text-gray-500 font-medium">Name</th><th className="px-6 py-4 text-left text-gray-500 font-medium">Email</th><th className="px-6 py-4 text-left text-gray-500 font-medium">Section</th><th className="px-6 py-4 text-left text-gray-500 font-medium">Actions</th></tr></thead>
                                 <tbody>
-                                    {students.map(s => (
-                                        <tr key={s._id} className="border-t">
-                                            <td className="px-6 py-4">{s.name}</td><td className="px-6 py-4">{s.email}</td>
-                                            <td className="px-6 py-4"><button onClick={() => deleteUser(s._id)} className="text-red-500">Delete</button></td>
+                                    {students
+                                        .filter(s => {
+                                            if (!selectedSection) return true;
+                                            const secName = sections.find(sec => sec._id === selectedSection)?.name;
+                                            return s.roleAttr === secName;
+                                        })
+                                        .map(s => (
+                                        <tr key={s._id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 font-medium text-gray-800">{s.name}</td>
+                                            <td className="px-6 py-4 text-gray-600">{s.email}</td>
+                                            <td className="px-6 py-4 text-indigo-600 font-medium">{s.roleAttr || '-'}</td>
+                                            <td className="px-6 py-4"><button onClick={() => deleteUser(s._id)} className="text-red-500 hover:text-red-700 font-medium"><i className="fas fa-trash-alt mr-2"></i>Delete</button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -190,71 +220,46 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {activeTab === 'courses' && (
+                    {activeTab === 'subjects' && (
                         <div>
-                            <button onClick={() => setModal({ show: true, type: 'course' })} className="mb-6 bg-green-600 text-white px-6 py-2.5 rounded-xl">Add Course</button>
+                            <button onClick={() => setModal({ show: true, type: 'subject' })} className="mb-6 bg-green-600 text-white px-6 py-2.5 rounded-xl">Add Subject</button>
                             <div className="grid gap-6">
-                                {courses.map(c => (
-                                    <div key={c._id} className="bg-white p-6 rounded-2xl border flex justify-between items-start">
+                                {subjects.map(s => (
+                                    <div key={s._id} className="bg-white p-6 rounded-2xl border flex justify-between items-start">
                                         <div>
-                                            <h4 className="font-bold text-xl">{c.name}</h4>
-                                            <p className="text-gray-500">Code: {c.code}</p>
-                                            <p className="text-sm text-gray-600">Students: {c.students?.length || 0}</p>
+                                            <h4 className="font-bold text-xl">{s.name}</h4>
+                                            <p className="text-gray-500">Code: {s.code}</p>
                                         </div>
-                                        <button onClick={() => fetch(`${API_BASE}/academic/courses/${c._id}`, { method: 'DELETE' }).then(refreshData)} className="text-red-500">Delete</button>
+                                        <button onClick={() => api.delete(`/academic/subjects/${s._id}`).then(refreshData)} className="text-red-500">Delete</button>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {activeTab === 'attendance' && (
+                    {activeTab === 'sections' && (
                         <div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <select 
-                                        value={selectedCourse} 
-                                        onChange={(e) => setSelectedCourse(e.target.value)}
-                                        className="flex-1 px-4 py-2 border rounded-xl"
-                                    >
-                                        <option value="">Select Course</option>
-                                        {courses.map(c => (
-                                            <option key={c._id} value={c._id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <input 
-                                        type="date" 
-                                        value={selectedDate} 
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="flex-1 px-4 py-2 border rounded-xl"
-                                    />
-                                </div>
+                            <button onClick={() => setModal({ show: true, type: 'section' })} className="mb-6 bg-blue-600 text-white px-6 py-2.5 rounded-xl">Add Section</button>
+                            <div className="grid gap-6">
+                                {sections.map(s => (
+                                    <div key={s._id} className="bg-white p-6 rounded-2xl border flex justify-between items-start">
+                                        <div>
+                                            <h4 className="font-bold text-xl">{s.name}</h4>
+                                            <p className="text-gray-500">Branch: {s.branch}</p>
+                                            <p className="text-sm text-gray-600">Students: {s.students?.length || 0}</p>
+                                        </div>
+                                        <button onClick={() => api.delete(`/academic/sections/${s._id}`).then(refreshData)} className="text-red-500">Delete</button>
+                                    </div>
+                                ))}
                             </div>
-                            {selectedCourse && (
-                                <AttendanceTable 
-                                    students={getCourseStudents(selectedCourse)} 
-                                    date={selectedDate} 
-                                    classId={selectedCourse} 
-                                    onMarkAttendance={handleMarkAttendance}
-                                    role="admin" 
-                                />
-                            )}
                         </div>
                     )}
 
-                    {activeTab === 'timetable' && (
-                        <TimetableGrid />
-                    )}
-
                     {activeTab === 'reports' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="max-w-4xl mx-auto">
                             <ReportsChart 
-                                data={[{_id: 'present', total: 85}, {_id: 'absent', total: 10}, {_id: 'late', total: 5}]} 
-                                title="Attendance Summary" 
-                            />
-                            <ReportsChart 
-                                data={[{_id: 'A', total: 40}, {_id: 'B', total: 35}, {_id: 'C', total: 25}]} 
-                                title="Grade Distribution" 
+                                data={reportData.attendance} 
+                                title="Global Attendance Summary" 
                             />
                         </div>
                     )}
@@ -307,16 +312,32 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {modal.show && modal.type === 'course' && (
+            {modal.show && modal.type === 'subject' && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl p-8 max-w-md w-full">
-                        <h3 className="text-2xl font-bold mb-4">Add Course</h3>
-                        <form onSubmit={handleCourseSubmit} className="space-y-4">
-                            <input type="text" placeholder="Course Name" required onChange={e => setCourseData({...courseData, name: e.target.value})} className="w-full px-4 py-2 border rounded" />
-                            <input type="text" placeholder="Course Code" required onChange={e => setCourseData({...courseData, code: e.target.value})} className="w-full px-4 py-2 border rounded" />
+                        <h3 className="text-2xl font-bold mb-4">Add Subject</h3>
+                        <form onSubmit={handleSubjectSubmit} className="space-y-4">
+                            <input type="text" placeholder="Subject Name" required onChange={e => setSubjectData({...subjectData, name: e.target.value})} className="w-full px-4 py-2 border rounded" />
+                            <input type="text" placeholder="Subject Code" required onChange={e => setSubjectData({...subjectData, code: e.target.value})} className="w-full px-4 py-2 border rounded" />
                             <div className="flex gap-4">
                                 <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
                                 <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded">Create</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {modal.show && modal.type === 'section' && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+                        <h3 className="text-2xl font-bold mb-4">Add Section</h3>
+                        <form onSubmit={handleSectionSubmit} className="space-y-4">
+                            <input type="text" placeholder="Section Name (e.g. BCA-A)" required onChange={e => setSectionData({...sectionData, name: e.target.value})} className="w-full px-4 py-2 border rounded" />
+                            <input type="text" placeholder="Branch (e.g. BCA)" required onChange={e => setSectionData({...sectionData, branch: e.target.value})} className="w-full px-4 py-2 border rounded" />
+                            <div className="flex gap-4">
+                                <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                                <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded">Create</button>
                             </div>
                         </form>
                     </div>

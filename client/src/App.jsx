@@ -5,9 +5,9 @@ import { useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
 const Login = React.lazy(() => import('./Login'));
-const AdminDashboard = React.lazy(() => import('./AdminDashboard'));
-const FacultyDashboard = React.lazy(() => import('./FacultyDashboard'));
-const StudentDashboard = React.lazy(() => import('./StudentDashboard'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const FacultyDashboard = React.lazy(() => import('./pages/FacultyDashboard'));
+const StudentDashboard = React.lazy(() => import('./pages/StudentDashboard'));
 
 const LoadingSpinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">

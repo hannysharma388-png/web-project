@@ -2,7 +2,7 @@ import express from 'express';
 import { 
   getAttendanceSummary, 
   getStudentGrades, 
-  getCourseReport,
+  getSubjectReport,
   getAttendanceTrends,
   getPerformanceMetrics
 } from '../controllers/reportsController.js';
@@ -15,7 +15,7 @@ router.use(authenticateToken);
 
 router.get('/attendance-summary', getAttendanceSummary);
 router.get('/student-grades', getStudentGrades);
-router.get('/course-report', getCourseReport);
+router.get('/subject-report', getSubjectReport);
 router.get('/attendance-trends', getAttendanceTrends);
 router.get('/performance-metrics', getPerformanceMetrics);
 

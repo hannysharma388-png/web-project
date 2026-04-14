@@ -6,48 +6,74 @@ import AttendanceTable from '../components/AttendanceTable';
 import TimetableGrid from '../components/TimetableGrid';
 
 export default function FacultyDashboard() {
-    const [user, setUser] = useState(null);
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('students');
     const [students, setStudents] = useState([]);
     const [tests, setTests] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [notices, setNotices] = useState([]);
-    const [courses, setCourses] = useState([]);
-    const [selectedCourse, setSelectedCourse] = useState('');
+    const [mySubjects, setMySubjects] = useState([]);
+    const [mySections, setMySections] = useState([]);
+    const [selectedSubject, setSelectedSubject] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [modal, setModal] = useState({ show: false, type: '' });
     const [title, setTitle] = useState('');
     const [date, setDate] = useState('');
-    const [marks, setMarks] = useState(0);
-    const [duration, setDuration] = useState(45);
+    const [marks, setMarks] = useState('');
+    const [duration, setDuration] = useState('');
+    const [file, setFile] = useState(null);
+    const [questions, setQuestions] = useState([]);
     const [toast, setToast] = useState('');
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(false);
 
-    const navigate = useNavigate();
     useEffect(() => {
-        refreshData(user._id);
-    }, []);
+        if (user) {
+            fetchInitialData();
+        }
+    }, [user]);
 
-    const refreshData = async (userId) => {
+    useEffect(() => {
+        if (user && selectedSubject && selectedSection) {
+            refreshAcademicData();
+        }
+    }, [selectedSubject, selectedSection]);
+
+    const fetchInitialData = async () => {
         try {
-            const stuRes = await fetch(`${API_BASE}/users?role=student`);
-            setStudents(await stuRes.json());
-
-            const testRes = await fetch(`${API_BASE}/academic/tests`);
-            const allTests = await testRes.json();
-            setTests(allTests.filter(t => t.authorId?.toString() === userId));
-
-            const assignRes = await fetch(`${API_BASE}/academic/assignments`);
-            const allAssignments = await assignRes.json();
-            setAssignments(allAssignments.filter(a => a.authorId?.toString() === userId));
-
-            const notRes = await fetch(`${API_BASE}/notices`);
-            setNotices(await notRes.json());
-
-            const courseRes = await fetch(`${API_BASE}/academic/courses`);
-            setCourses(await courseRes.json());
+            const [subRes, notRes] = await Promise.all([
+                api.get('/academic/subjects/faculty'),
+                api.get('/notices')
+            ]);
+            setMySubjects(subRes.data);
+            setNotices(notRes.data);
         } catch (err) {
-            console.error('API Error:', err);
+            console.error('Initial Fetch Error:', err);
+        }
+    };
+
+    const refreshAcademicData = async () => {
+        try {
+            setInitialLoading(true);
+            const [testRes, assignRes, stuRes] = await Promise.all([
+                api.get(`/academic/tests?subject=${selectedSubject}&section=${selectedSection}`),
+                api.get(`/academic/assignments?subject=${selectedSubject}&section=${selectedSection}`),
+                api.get(`/users?role=student&section=${selectedSection}`)
+            ]);
+            setTests(testRes.data);
+            setAssignments(assignRes.data);
+            setStudents(stuRes.data);
+            setInitialLoading(false);
+        } catch (err) {
+            console.error('Academic Fetch Error:', err);
+            setInitialLoading(false);
+        }
+    };
+
+    const refreshData = () => {
+        if (selectedSubject && selectedSection) {
+            refreshAcademicData();
         }
     };
 
@@ -57,57 +83,74 @@ export default function FacultyDashboard() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        logout();
         navigate('/');
     };
 
     const deleteTest = async (id) => {
-        await fetch(`${API_BASE}/academic/tests/${id}`, { method: 'DELETE' });
-        refreshData(user._id);
+        if (!window.confirm("Are you sure you want to delete this test?")) return;
+        await api.delete(`/academic/tests/${id}`);
+        refreshData();
         showToast('Test deleted');
     };
 
     const deleteAssignment = async (id) => {
-        await fetch(`${API_BASE}/academic/assignments/${id}`, { method: 'DELETE' });
-        refreshData(user._id);
+        if (!window.confirm("Are you sure you want to delete this assignment?")) return;
+        await api.delete(`/academic/assignments/${id}`);
+        refreshData();
         showToast('Assignment deleted');
     };
 
     const handleSubmit = async (e, type) => {
         e.preventDefault();
-        const payload = { title, dueDate: date, marks, authorId: user._id };
         
-        if (type === 'test') {
-            payload.duration = duration;
-            await fetch(`${API_BASE}/academic/tests`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            showToast('Test created!');
-        } else {
-            await fetch(`${API_BASE}/academic/assignments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            showToast('Assignment created!');
+        try {
+            if (type === 'test') {
+                const mappedQuestions = questions.map(q => ({
+                    question: q.question,
+                    options: q.options,
+                    correctAnswer: q.options[q.correctOptionIndex]
+                }));
+                const payload = { 
+                    title, dueDate: date, marks, authorId: user._id,
+                    subject: selectedSubject, section: selectedSection, duration,
+                    questions: mappedQuestions
+                };
+                await api.post('/academic/tests', payload);
+                showToast('Test created!');
+            } else {
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('deadline', date);
+                formData.append('marks', marks);
+                formData.append('subject', selectedSubject);
+                formData.append('section', selectedSection);
+                formData.append('authorId', user._id);
+                if (file) formData.append('pdfFile', file);
+
+                await api.post('/academic/assignments', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                showToast('Assignment created!');
+            }
+            setModal({ show: false, type: '' });
+            setTitle(''); setDate(''); setMarks(''); setDuration(''); setFile(null); setQuestions([]);
+            refreshData();
+        } catch (err) {
+            showToast('Error creating ' + type);
         }
-        setModal({ show: false, type: '' });
-        refreshData(user._id);
     };
 
     const handleMarkAttendance = async (data) => {
         setLoading(true);
         try {
-            await fetch(`${API_BASE}/academic/attendance/mark`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+            await api.post('/academic/attendance/mark', {
+                ...data,
+                subject: selectedSubject,
+                section: selectedSection
             });
             showToast('Attendance marked!');
-            refreshData(user._id);
+            refreshData();
         } catch (err) {
             showToast('Error marking attendance');
         }
@@ -125,9 +168,8 @@ export default function FacultyDashboard() {
         { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
     ];
 
-    const getCourseStudents = (courseId) => {
-        const course = courses.find(c => c._id === courseId);
-        return course ? course.students.map(s => ({ ...s, _id: s._id })) : [];
+    const getSectionStudents = () => {
+        return students;
     };
 
     return (
@@ -156,7 +198,7 @@ export default function FacultyDashboard() {
             {/* Main Content */}
             <main className="main-content flex-1 ml-72 min-h-screen">
                 <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <h1 className="text-xl font-semibold text-gray-800">{activeTab.toUpperCase()}</h1>
+                    <h1 className="text-xl font-semibold text-gray-800">{activeTab?.toUpperCase() || 'DASHBOARD'}</h1>
                     <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                         <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white">{user.name.charAt(0)}</div>
                         <div>
@@ -167,101 +209,186 @@ export default function FacultyDashboard() {
                 </header>
 
                 <div className="tab-content p-8">
-                    {/* Students Tab */}
-                    {activeTab === 'students' && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="data-table w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Name</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Email</th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Course</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {students.map(s => (
-                                        <tr key={s._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4">{s.name}</td>
-                                            <td className="px-6 py-4">{s.email}</td>
-                                            <td className="px-6 py-4">{s.roleAttr}</td>
-                                        </tr>
+                    {/* Academic Context Selector */}
+                    {['students', 'tests', 'assignments', 'attendance'].includes(activeTab) && (
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6 flex flex-col md:flex-row gap-4 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Select Subject</label>
+                                <select 
+                                    value={selectedSubject} 
+                                    onChange={(e) => {
+                                        setSelectedSubject(e.target.value);
+                                        setSelectedSection(''); // Clear section when subject changes
+                                        const subject = mySubjects.find(s => s._id === e.target.value);
+                                        setMySections(subject ? subject.sections : []);
+                                    }}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all"
+                                >
+                                    <option value="">Choose Subject...</option>
+                                    {mySubjects.map(s => (
+                                        <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Tests Tab */}
-                    {activeTab === 'tests' && (
-                        <div>
-                            <button onClick={() => setModal({ show: true, type: 'test' })} className="mb-6 bg-purple-600 text-white px-6 py-2.5 rounded-xl hover:bg-purple-700">New Test</button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {tests.map(t => (
-                                    <div key={t._id} className="bg-white rounded-2xl p-6 shadow-sm border">
-                                        <h3 className="text-lg font-semibold">{t.title}</h3>
-                                        <p className="text-sm text-gray-500 mt-2">Due: {new Date(t.dueDate).toLocaleDateString()} | {t.marks} Marks</p>
-                                        <button onClick={() => deleteTest(t._id)} className="mt-4 text-red-500 text-sm">Delete</button>
-                                    </div>
-                                ))}
+                                </select>
+                            </div>
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Select Section</label>
+                                <select 
+                                    value={selectedSection} 
+                                    onChange={(e) => setSelectedSection(e.target.value)}
+                                    disabled={!selectedSubject}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <option value="">Choose Section...</option>
+                                    {mySections.map(s => (
+                                        <option key={s._id} value={s._id}>{s.name} - {s.branch}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     )}
 
-                    {/* Assignments Tab */}
-                    {activeTab === 'assignments' && (
-                        <div>
-                            <button onClick={() => setModal({ show: true, type: 'assignment' })} className="mb-6 bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700">New Assignment</button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {assignments.map(a => (
-                                    <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border">
-                                        <h3 className="text-lg font-semibold">{a.title}</h3>
-                                        <p className="text-sm text-gray-500 mt-2">Due: {new Date(a.dueDate).toLocaleDateString()} | {a.marks} Marks</p>
-                                        <button onClick={() => deleteAssignment(a._id)} className="mt-4 text-red-500 text-sm">Delete</button>
-                                    </div>
-                                ))}
-                            </div>
+                    {!selectedSubject && !selectedSection && ['students', 'tests', 'assignments', 'attendance'].includes(activeTab) ? (
+                        <div className="bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-3xl p-12 text-center">
+                            <i className="fas fa-layer-group text-4xl text-emerald-300 mb-4"></i>
+                            <h3 className="text-xl font-bold text-emerald-900">Select Subject & Section</h3>
+                            <p className="text-emerald-700 mt-2">Please select a subject and section above to view and manage academic data.</p>
                         </div>
-                    )}
+                    ) : (
+                        <>
+                            {activeTab === 'students' && (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <table className="data-table w-full">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Name</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Email</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500">Section</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {initialLoading ? (
+                                                <tr><td colSpan="3" className="px-6 py-12 text-center">Loading students...</td></tr>
+                                            ) : students.length > 0 ? (
+                                                students.map(s => (
+                                                    <tr key={s._id} className="hover:bg-gray-50 border-t border-gray-100">
+                                                        <td className="px-6 py-4 font-medium">{s.name}</td>
+                                                        <td className="px-6 py-4 text-gray-600">{s.email}</td>
+                                                        <td className="px-6 py-4"><span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold uppercase">{selectedSection ? mySections.find(sec => sec._id === selectedSection)?.name : '-'}</span></td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr><td colSpan="3" className="px-6 py-12 text-center text-gray-400">No students found in this section</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
 
-                    {/* Attendance Tab */}
-                    {activeTab === 'attendance' && (
-                        <div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <select 
-                                        value={selectedCourse} 
-                                        onChange={(e) => setSelectedCourse(e.target.value)}
-                                        className="flex-1 px-4 py-2 border rounded-xl"
-                                    >
-                                        <option value="">Select Course</option>
-                                        {courses.map(c => (
-                                            <option key={c._id} value={c._id}>{c.name}</option>
+                            {activeTab === 'tests' && (
+                                <div>
+                                    <button onClick={() => setModal({ show: true, type: 'test' })} className="mb-6 bg-purple-600 text-white px-6 py-2.5 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all flex items-center gap-2">
+                                        <i className="fas fa-plus"></i> New Test
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {initialLoading ? (
+                                            Array(3).fill().map((_, i) => (
+                                                <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border animate-pulse">
+                                                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                                                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                                                </div>
+                                            ))
+                                        ) : tests.map(t => (
+                                            <div key={t._id} className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all group">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all">
+                                                        <i className="fas fa-file-alt text-xl"></i>
+                                                    </div>
+                                                    <button onClick={() => deleteTest(t._id)} className="text-gray-400 hover:text-red-500 transition-all"><i className="fas fa-trash-alt"></i></button>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-800">{t.title}</h3>
+                                                <div className="mt-4 flex flex-wrap gap-3">
+                                                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                                                        <i className="far fa-calendar"></i> {new Date(t.dueDate).toLocaleDateString()}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                                                        <i className="fas fa-star"></i> {t.marks} Marks
+                                                    </span>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </select>
-                                    <input 
-                                        type="date" 
-                                        value={selectedDate} 
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="flex-1 px-4 py-2 border rounded-xl"
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'assignments' && (
+                                <div>
+                                    <button onClick={() => setModal({ show: true, type: 'assignment' })} className="mb-6 bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">
+                                        <i className="fas fa-plus"></i> New Assignment
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {initialLoading ? (
+                                            Array(3).fill().map((_, i) => (
+                                                <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border animate-pulse">
+                                                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                                                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                                                </div>
+                                            ))
+                                        ) : assignments.map(a => (
+                                            <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all group">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                                        <i className="fas fa-file-pdf text-xl"></i>
+                                                    </div>
+                                                    <button onClick={() => deleteAssignment(a._id)} className="text-gray-400 hover:text-red-500 transition-all"><i className="fas fa-trash-alt"></i></button>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-800">{a.title}</h3>
+                                                <div className="mt-4 flex flex-wrap gap-3">
+                                                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                                                        <i className="far fa-calendar-alt"></i> {new Date(a.deadline ? a.deadline : a.dueDate).toLocaleDateString()}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                                                        <i className="fas fa-check-circle"></i> {a.marks} Marks
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'attendance' && (
+                                <div>
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase">Date</label>
+                                                <input 
+                                                    type="date" 
+                                                    value={selectedDate} 
+                                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <AttendanceTable 
+                                        students={getSectionStudents()} 
+                                        date={selectedDate} 
+                                        classId={selectedSubject} 
+                                        onMarkAttendance={handleMarkAttendance}
+                                        role="faculty" 
+                                        loading={loading}
                                     />
                                 </div>
-                            </div>
-                            {selectedCourse && (
-                                <AttendanceTable 
-                                    students={getCourseStudents(selectedCourse)} 
-                                    date={selectedDate} 
-                                    classId={selectedCourse} 
-                                    onMarkAttendance={handleMarkAttendance}
-                                    role="faculty" 
-                                    loading={loading}
-                                />
                             )}
-                        </div>
+                        </>
                     )}
 
                     {/* Timetable Tab */}
                     {activeTab === 'timetable' && (
-                        <TimetableGrid roleAttr={user.roleAttr} />
+                        <TimetableGrid fetchUrl="/academic/timetable/faculty" />
                     )}
 
                     {/* Notices Tab */}
@@ -287,8 +414,46 @@ export default function FacultyDashboard() {
                             <input type="text" placeholder="Title" required onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 border rounded-xl" />
                             <input type="date" required onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 border rounded-xl" />
                             <input type="number" placeholder="Marks" required onChange={e => setMarks(e.target.value)} className="w-full px-4 py-3 border rounded-xl" />
-                            {modal.type === 'test' && (
-                                <input type="number" placeholder="Duration (mins)" onChange={e => setDuration(e.target.value)} className="w-full px-4 py-3 border rounded-xl" />
+                            {modal.type === 'test' ? (
+                                <>
+                                    <input type="number" placeholder="Duration (mins)" onChange={e => setDuration(e.target.value)} className="w-full px-4 py-3 border rounded-xl" />
+                                    <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 max-h-72 overflow-y-auto space-y-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="font-semibold text-gray-700">Questions ({questions.length})</label>
+                                            <button type="button" onClick={() => setQuestions([...questions, { question: '', options: ['', '', '', ''], correctOptionIndex: 0 }])} className="bg-indigo-100 text-indigo-700 px-3 py-1 text-sm rounded-lg hover:bg-indigo-200">
+                                                <i className="fas fa-plus"></i> Add MCQ
+                                            </button>
+                                        </div>
+                                        {questions.map((q, idx) => (
+                                            <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative pt-8">
+                                                <button type="button" onClick={() => {
+                                                    const ql = [...questions]; ql.splice(idx, 1); setQuestions(ql);
+                                                }} className="absolute top-2 right-3 text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button>
+                                                <span className="absolute top-2 left-3 text-xs font-bold text-gray-400">Q{idx + 1}</span>
+                                                <input type="text" placeholder="Enter question..." required value={q.question} onChange={e => {
+                                                    const ql = [...questions]; ql[idx].question = e.target.value; setQuestions(ql);
+                                                }} className="w-full px-3 py-2 border rounded-lg mb-3" />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {q.options.map((opt, oIdx) => (
+                                                        <div key={oIdx} className="flex items-center gap-2">
+                                                            <input type="radio" name={`correctOption_${idx}`} required checked={q.correctOptionIndex === oIdx} onChange={() => {
+                                                                const ql = [...questions]; ql[idx].correctOptionIndex = oIdx; setQuestions(ql);
+                                                            }} className="w-4 h-4 text-emerald-500" />
+                                                            <input type="text" placeholder={`Option ${oIdx + 1}`} required value={opt} onChange={e => {
+                                                                const ql = [...questions]; ql[idx].options[oIdx] = e.target.value; setQuestions(ql);
+                                                            }} className="flex-1 px-2 py-1 border rounded-md text-sm" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (PDF)</label>
+                                    <input type="file" accept="application/pdf" onChange={e => setFile(e.target.files[0])} className="w-full px-4 py-2 border rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-50 file:text-indigo-600" />
+                                </div>
                             )}
                             <div className="flex gap-4">
                                 <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-3 rounded-xl">Cancel</button>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from './utils/api';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from './context/AuthContext';
 
 export default function Login() {
@@ -10,11 +11,13 @@ export default function Login() {
     const [role, setRole] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const { setUser } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
 
         if (!email || !password || !role) {
             toast.error('Please fill in all fields.');
@@ -37,6 +40,7 @@ export default function Login() {
             else if (data.user.role === 'student') navigate('/student');
         } catch (err) {
             const message = err.response?.data?.message || err.response?.data?.error || 'Connection error. Ensure backend is running.';
+            setError(message);
             toast.error(message);
         } finally {
             setLoading(false);
@@ -64,6 +68,33 @@ export default function Login() {
                         <h2 className="text-xl font-semibold text-gray-800">Sign In</h2>
                         <p className="text-gray-500 text-sm mt-1">Enter your credentials to access the portal</p>
                     </div>
+
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0, y: -20 }}
+                                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                exit={{ opacity: 0, height: 0, y: -20 }}
+                                className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                                        <i className="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-red-800">Login Failed</p>
+                                        <p className="text-xs text-red-700 mt-0.5">{error}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => setError('')}
+                                        className="ml-auto text-red-400 hover:text-red-600 transition-colors"
+                                    >
+                                        <i className="fas fa-times text-sm"></i>
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="form-group">

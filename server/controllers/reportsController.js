@@ -2,26 +2,32 @@
 import mongoose from 'mongoose';
 import Attendance from '../models/Attendance.js';
 import Submission from '../models/Submission.js';
-import Course from '../models/Course.js';
+import Subject from '../models/Subject.js';
+import Section from '../models/Section.js';
 import User from '../models/User.js';
 
-// Attendance Summary by class and date range
+// Attendance Summary by subject/section and date range
 export const getAttendanceSummary = async (req, res) => {
   try {
-    const { classId, startDate, endDate } = req.query;
-    const match = { classId };
+    const { subjectId, sectionId, startDate, endDate } = req.query;
+    const match = {};
+    
+    if (subjectId) match.subject = new mongoose.Types.ObjectId(subjectId);
+    if (sectionId) match.section = new mongoose.Types.ObjectId(sectionId);
+    
     if (startDate && endDate) {
       match.date = { 
         $gte: new Date(startDate), 
         $lte: new Date(endDate) 
       };
     }
+    
     const attendance = await Attendance.aggregate([
       { $match: match },
       {
         $group: {
           _id: { 
-            studentId: '$studentId', 
+            student: '$student', 
             date: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }
           },
           status: { $last: '$status' },
@@ -50,8 +56,8 @@ export const getAttendanceSummary = async (req, res) => {
 export const getStudentGrades = async (req, res) => {
   try {
     const { studentId } = req.query;
-    const subs = await Submission.find({ studentId })
-      .populate('assignmentId', 'title marks')
+    const subs = await Submission.find({ student: studentId })
+      .populate('assignment', 'title marks')
       .lean();
     const totalMarks = subs.reduce((sum, s) => sum + (s.grade || 0), 0);
     const avgGrade = subs.length ? totalMarks / subs.length : 0;
@@ -61,14 +67,12 @@ export const getStudentGrades = async (req, res) => {
   }
 };
 
-// Course Report
-export const getCourseReport = async (req, res) => {
+// Subject Report
+export const getSubjectReport = async (req, res) => {
   try {
-    const { courseId } = req.query;
-    const course = await Course.findById(courseId).populate('students');
-    const studentsCount = course.students.length;
-    // Add more stats...
-    res.json({ course: course.name, studentsCount });
+    const { subjectId } = req.query;
+    const subject = await Subject.findById(subjectId).populate('sections');
+    res.json({ subject: subject.name, sectionsCount: subject.sections.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -77,9 +81,12 @@ export const getCourseReport = async (req, res) => {
 // Attendance Trends
 export const getAttendanceTrends = async (req, res) => {
   try {
-    const { classId, startDate, endDate } = req.query;
+    const { subjectId, sectionId, startDate, endDate } = req.query;
     let match = {};
-    if (classId) match.classId = classId;
+    
+    if (subjectId) match.subject = new mongoose.Types.ObjectId(subjectId);
+    if (sectionId) match.section = new mongoose.Types.ObjectId(sectionId);
+    
     if (startDate && endDate) {
       match.date = { 
         $gte: new Date(startDate), 
@@ -88,7 +95,7 @@ export const getAttendanceTrends = async (req, res) => {
     }
 
     const attendance = await Attendance.aggregate([
-      { $match: { ...match, classId: match.classId ? new mongoose.Types.ObjectId(match.classId) : { $exists: true } } },
+      { $match: match },
       {
         $group: {
           _id: { 
@@ -132,18 +139,16 @@ export const getPerformanceMetrics = async (req, res) => {
     const { authorId } = req.query; // faculty id
     let match = {};
 
-    // Populating sub to calculate metrics. Since we might need all for admin, authorId is optional.
     const subs = await Submission.find(match)
-      .populate('assignmentId', 'title marks authorId')
+      .populate('assignment', 'title marks authorId')
       .populate('testId', 'title marks authorId')
       .lean();
 
     const stats = {};
     subs.forEach(s => {
-      const parent = s.assignmentId || s.testId;
+      const parent = s.assignment || s.testId;
       if (!parent || typeof s.grade !== 'number') return;
       
-      // If filtering by authorId, skip if it doesn't match
       if (authorId && parent.authorId && parent.authorId.toString() !== authorId) return;
 
       const id = parent._id.toString();

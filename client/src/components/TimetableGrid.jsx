@@ -1,145 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
-// Color assignment logic based on subject string
-const getSubjectColor = (subject) => {
-  let hash = 0;
-  for (let i = 0; i < subject.length; i++) {
-    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 70%, 90%)`;
-};
-
-const getSubjectBorderColor = (subject) => {
-  let hash = 0;
-  for (let i = 0; i < subject.length; i++) {
-    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 70%, 75%)`;
-};
-
-const getTextColor = (subject) => {
-  let hash = 0;
-  for (let i = 0; i < subject.length; i++) {
-    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 80%, 25%)`;
-};
-
-const DraggableSlot = ({ slot, isEditable }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: slot._id,
-    data: slot,
-    disabled: !isEditable
-  });
-
-  const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    zIndex: isDragging ? 999 : 1,
-    opacity: isDragging ? 0.8 : 1,
-    cursor: isEditable && !isDragging ? 'grab' : isDragging ? 'grabbing' : 'default',
-    backgroundColor: getSubjectColor(slot.subject),
-    borderColor: getSubjectBorderColor(slot.subject),
-    color: getTextColor(slot.subject)
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={`relative w-full p-3 rounded-xl border flex flex-col items-center justify-center min-h-[5rem] shadow-sm transition-shadow ${isEditable ? 'hover:shadow-md' : ''}`}
-    >
-      <div className="font-bold text-center text-sm truncate w-full">{slot.subject}</div>
-      <div className="text-xs font-semibold opacity-90 truncate w-full text-center mt-1">{slot.teacherId?.name || 'TBA'}</div>
-      <div className="text-[10px] uppercase font-black tracking-widest mt-1 mix-blend-multiply opacity-80">{slot.room}</div>
-    </div>
-  );
-};
-
-const DroppableCell = ({ day, period, children, isEditable }) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `${day}-${period}`,
-    data: { day, period },
-    disabled: !isEditable
-  });
-
-  let bgClass = 'bg-white dark:bg-slate-800';
-  if (isOver && isEditable) {
-    bgClass = 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-inset ring-indigo-300';
-  }
-
-  return (
-    <td
-      ref={setNodeRef}
-      className={`p-3 border-l border-b border-gray-100 dark:border-slate-700/50 min-w-[150px] relative transition-colors ${bgClass}`}
-    >
-      <div className="w-full flex items-center justify-center min-h-[5rem]">
-        {children || <span className="text-gray-300 dark:text-slate-600 text-sm font-medium">---</span>}
-      </div>
-    </td>
-  );
-};
-
-const TimetableGrid = ({ roleAttr, isEditable = false }) => {
+const TimetableGrid = ({ fetchUrl = '/academic/timetable', isEditable = false, onRefresh }) => {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeDay, setActiveDay] = useState(new Date().toLocaleDateString('en-US', { weekday: 'Long' }));
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const periods = Array.from({ length: 6 }, (_, i) => i + 1);
 
   useEffect(() => {
     fetchData();
-  }, [roleAttr]);
+  }, [fetchUrl]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/academic/timetable?roleAttr=${roleAttr || ''}`);
-      setTimetable(res.data);
+      const res = await api.get(fetchUrl);
+      console.log('Timetable Response:', res?.status, res?.data);
+      
+      const data = res?.data;
+      setTimetable(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to load timetable');
+      console.error('Timetable Fetch Error:', err);
+      // No need to crash the whole app if toast fails
+      if (typeof toast?.error === 'function') {
+        toast.error('Failed to load timetable');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    if (!over) return;
+  const daySchedule = Array.isArray(timetable) ? timetable.filter(slot => slot.day === activeDay) : [];
 
-    const item = active.data.current;
-    const { day, period } = over.data.current;
-
-    if (item.day === day && item.period === period) return;
-
-    // Optimistic Update
-    const originalTimetable = [...timetable];
-    setTimetable(prev => prev.map(t => 
-      t._id === item._id ? { ...t, day, period } : t
-    ));
-
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this slot?')) return;
     try {
-      await api.patch(`/academic/timetable/${item._id}`, { day, period });
-      toast.success('Schedule updated!');
+      await api.delete(`/academic/timetable/${id}`);
+      toast.success('Slot deleted');
+      fetchData();
+      if (onRefresh) onRefresh();
     } catch (err) {
-      console.error(err);
-      // Revert if API fails
-      setTimetable(originalTimetable);
-      const errorMessage = err.response?.data?.error || 'Update failed due to conflict';
-      toast.error(errorMessage);
+      toast.error('Failed to delete slot');
     }
-  };
-
-  const getSlot = (day, period) => {
-    return timetable.find(tt => tt.day === day && tt.period === period) || null;
   };
 
   if (loading) return (
@@ -149,35 +53,75 @@ const TimetableGrid = ({ roleAttr, isEditable = false }) => {
   );
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 overflow-x-auto w-full">
-        <table className="w-full text-left" style={{ minWidth: '900px' }}>
-          <thead className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700/50">
-            <tr>
-              <th className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center w-20 border-r border-gray-100 dark:border-slate-700/50">Period</th>
-              {days.map(day => (
-                <th key={day} className="px-5 py-4 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider text-center border-l border-gray-100 dark:border-slate-700/50">{day}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-700/50">
-            {periods.map(period => (
-              <tr key={period} className="group">
-                <td className="px-5 py-4 bg-gray-50/30 dark:bg-slate-900/30 font-bold text-gray-700 dark:text-slate-300 text-center border-r border-gray-100 dark:border-slate-700/50">{period}</td>
-                {days.map(day => {
-                  const slot = getSlot(day, period);
-                  return (
-                    <DroppableCell key={`${day}-${period}`} day={day} period={period} isEditable={isEditable}>
-                      {slot && <DraggableSlot slot={slot} isEditable={isEditable} />}
-                    </DroppableCell>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="w-full space-y-6">
+      {/* Day Selector */}
+      <div className="flex flex-wrap gap-2 p-1 bg-gray-100 dark:bg-slate-900/50 rounded-2xl w-fit">
+        {days.map(day => (
+          <button
+            key={day}
+            onClick={() => setActiveDay(day)}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              activeDay === day 
+                ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            {day}
+          </button>
+        ))}
       </div>
-    </DndContext>
+
+      {/* Schedule List */}
+      <div className="space-y-4">
+        {daySchedule && daySchedule.length > 0 ? (
+          daySchedule.map((slot) => {
+            if (!slot) return null;
+            return (
+              <div 
+                key={slot._id || Math.random()} 
+                className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-colors"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="w-24 shrink-0 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-center">
+                    <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 block">{slot.startTime || '--:--'}</span>
+                    <span className="text-[10px] uppercase font-bold text-indigo-400 dark:text-indigo-500">{slot.endTime || '--:--'}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 dark:text-slate-100">{slot.subject?.name || 'Unknown Subject'}</h4>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                      <span className="text-xs text-gray-500 dark:text-slate-400">
+                        <i className="far fa-user mr-1.5 opacity-70"></i>
+                        {slot.faculty?.name || 'TBA'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-slate-400">
+                        <i className="fas fa-users mr-1.5 opacity-70"></i>
+                        {slot.section?.name || 'No Section'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {isEditable && slot._id && (
+                  <button 
+                    onClick={() => handleDelete(slot._id)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                  >
+                    <i className="far fa-trash-alt"></i>
+                  </button>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <div className="py-12 text-center bg-gray-50/50 dark:bg-slate-900/20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-800 flex flex-col items-center">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-gray-400 mb-3">
+              <i className="far fa-calendar-times text-xl"></i>
+            </div>
+            <p className="text-gray-500 dark:text-slate-400 font-medium">No classes scheduled for {activeDay || 'this day'}</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

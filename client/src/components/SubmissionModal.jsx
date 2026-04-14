@@ -53,8 +53,9 @@ const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
     setErrorMsg('');
 
     const formData = new FormData();
-    formData.append('assignmentId', assignment._id);
-    formData.append('studentId', JSON.parse(localStorage.getItem('user'))._id);
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    formData.append('assignment', assignment._id);
+    formData.append('student', currentUser.id || currentUser._id);
     formData.append('file', file);
     if (feedback) formData.append('feedback', feedback);
 

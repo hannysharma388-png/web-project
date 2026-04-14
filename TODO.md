@@ -10,9 +10,9 @@
 7. ✅ Project fully functional
 
 ## Login Credentials
-**Admin:** harshit.sharma@jis.edu / `admin123` → /admin
-**Faculty:** e.g. rajesh.kumar@jis.edu / `college123` → /faculty  
-**Student:** e.g. aarav.sharma@jis.edu / `college123` → /student
+**Admin:** `admin@jis.edu` / `admin123` → /admin
+**Faculty:** e.g. `ramesh@jis.edu` / `faculty123` → /faculty  
+**Student:** e.g. `amit.patel@jis.edu` / `student123` → /student
 
 ## Status
-Ready to use! Open http://localhost:5173/
+Ready to use! Open http://localhost:5174/ (Backend on http://localhost:5001)

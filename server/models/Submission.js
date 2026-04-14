@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 
 const submissionSchema = new mongoose.Schema({
-  assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' },
+  assignment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' },
   testId: { type: mongoose.Schema.Types.ObjectId, ref: 'Test' },
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  filePath: { type: String },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  file: { type: String },
   grade: { type: Number },
   feedback: { type: String },
   submittedAt: { type: Date, default: Date.now }

@@ -40,10 +40,11 @@ const renderActiveShape = (props) => {
 };
 
 export default function AnalyticsView({ role, userId }) {
-    const [courses, setCourses] = useState([]);
+    const [subjects, setSubjects] = useState([]);
     
     // Filters
-    const [classId, setClassId] = useState('');
+    const [subjectId, setSubjectId] = useState('');
+    const [sectionId, setSectionId] = useState('');
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
@@ -99,31 +100,35 @@ export default function AnalyticsView({ role, userId }) {
     };
 
     useEffect(() => {
-        const fetchCourses = async () => {
+        const fetchSubjects = async () => {
             try {
-                const res = await api.get('/academic/courses');
-                let crs = Array.isArray(res.data) ? res.data : [];
-                if (role === 'faculty') {
-                    crs = crs.filter(c => c.faculty && c.faculty.some(f => f._id === userId));
+                const res = await api.get('/academic/subjects/faculty');
+                setSubjects(res.data);
+                if (res.data.length > 0) {
+                    setSubjectId(res.data[0]._id);
+                    if (res.data[0].sections?.length > 0) {
+                        setSectionId(res.data[0].sections[0]._id);
+                    }
                 }
-                setCourses(crs);
-                if (crs.length > 0) setClassId(crs[0]._id);
             } catch (err) {
-                console.error(err);
+                console.error('Failed to fetch subjects', err);
             }
         };
-        fetchCourses();
+        fetchSubjects();
     }, [role, userId]);
 
     useEffect(() => {
-        fetchAnalytics();
-    }, [classId, startDate, endDate, role, userId]);
+        if (subjectId) {
+            fetchAnalytics();
+        }
+    }, [subjectId, sectionId, startDate, endDate, role, userId]);
 
     const fetchAnalytics = async () => {
         setIsLoading(true);
         try {
             const queryParams = new URLSearchParams();
-            if (classId) queryParams.append('classId', classId);
+            if (subjectId) queryParams.append('subjectId', subjectId);
+            if (sectionId) queryParams.append('sectionId', sectionId);
             if (startDate) queryParams.append('startDate', startDate);
             if (endDate) queryParams.append('endDate', endDate);
             
@@ -172,19 +177,40 @@ export default function AnalyticsView({ role, userId }) {
         return null;
     };
 
+    const selectedSubject = subjects.find(s => s._id === subjectId);
+
     return (
         <div className="animate-fade-in space-y-8">
             {/* Control Panel */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-wrap gap-4 items-end">
                 <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">Filter By Course</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">Subject</label>
                     <select 
                         className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white transition-all"
-                        value={classId}
-                        onChange={(e) => setClassId(e.target.value)}
+                        value={subjectId}
+                        onChange={(e) => {
+                            setSubjectId(e.target.value);
+                            const subj = subjects.find(s => s._id === e.target.value);
+                            if (subj?.sections?.length > 0) setSectionId(subj.sections[0]._id);
+                            else setSectionId('');
+                        }}
                     >
-                        <option value="">All Courses</option>
-                        {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
+                        <option value="">Select Subject</option>
+                        {subjects.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+                    </select>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-2">Section</label>
+                    <select 
+                        className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-white transition-all"
+                        value={sectionId}
+                        onChange={(e) => setSectionId(e.target.value)}
+                        disabled={!subjectId}
+                    >
+                        <option value="">All Sections</option>
+                        {selectedSubject?.sections?.map(sec => (
+                            <option key={sec._id} value={sec._id}>{sec.name} ({sec.branch})</option>
+                        ))}
                     </select>
                 </div>
                 <div className="flex-1 min-w-[150px]">
@@ -217,7 +243,7 @@ export default function AnalyticsView({ role, userId }) {
             </div>
 
             <div ref={printRef} className="space-y-8 bg-gray-50 dark:bg-slate-950 p-4 rounded-3xl">
-                {/* Top Charts: Pie Summary & Bar Drilldown (simulated as separate charts side by side) */}
+                {/* Top Charts: Pie Summary & Bar Drilldown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Summary Pie */}
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col items-center">
@@ -248,7 +274,7 @@ export default function AnalyticsView({ role, userId }) {
                             </ResponsiveContainer>
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-gray-400"><i className="fas fa-chart-pie text-4xl mb-4 text-gray-200"></i><p>No Data Available</p></div>
+                        <div className="flex-1 flex flex-col items-center justify-center text-gray-400 min-h-[320px]"><i className="fas fa-chart-pie text-4xl mb-4 text-gray-200"></i><p>No Data Available</p></div>
                     )}
                 </div>
 
@@ -356,12 +382,6 @@ export default function AnalyticsView({ role, userId }) {
                                         </div>
                                     );
                                 })}
-                            </div>
-                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
-                                <p className="text-xs text-center text-gray-400 dark:text-gray-500">
-                                    <i className="fas fa-info-circle mr-1"></i>
-                                    Detailed breakdown is simulated based on active data point.
-                                </p>
                             </div>
                         </div>
 
