@@ -7,6 +7,7 @@ import EmptyState from './components/ui/EmptyState';
 import api from './utils/api';
 import { useSocket } from './context/SocketContext';
 import { toast as hotToast } from 'react-hot-toast';
+import SubmissionModal from './components/SubmissionModal';
 
 export default function StudentDashboard() {
     const [user, setUser] = useState(null);
@@ -399,6 +400,18 @@ export default function StudentDashboard() {
                                                                 <span className="text-sm font-bold text-amber-500 dark:text-amber-400 italic">Processing</span>
                                                             )}
                                                         </div>
+                                                        {rec.filePath && (
+                                                            <a 
+                                                                href={`http://localhost:5001/${rec.filePath}`} 
+                                                                target="_blank" 
+                                                                rel="noreferrer" 
+                                                                download 
+                                                                title="Download Attached Work"
+                                                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl transition-colors flex items-center gap-2"
+                                                            >
+                                                                <i className="fas fa-download"></i> View File
+                                                            </a>
+                                                        )}
                                                     </div>
                                                     
                                                     {rec.feedback && (
@@ -440,8 +453,19 @@ export default function StudentDashboard() {
             </main>
 
             {/* Modals Simulation */}
+            <SubmissionModal 
+                isOpen={interactionModal.show && interactionModal.type === 'assignment'} 
+                onClose={() => setInteractionModal({ show: false, type: '', data: null })} 
+                assignment={interactionModal.data || {}} 
+                onSuccess={() => {
+                    setInteractionModal({ show: false, type: '', data: null });
+                    showToast('Successfully submitted!');
+                    refreshData(user.id);
+                }} 
+            />
+
             <AnimatePresence>
-                {interactionModal.show && (
+                {interactionModal.show && interactionModal.type === 'test' && (
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -450,15 +474,15 @@ export default function StudentDashboard() {
                             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
                             className="bg-white dark:bg-slate-800 rounded-3xl p-10 max-w-lg w-full text-center shadow-2xl border border-gray-100 dark:border-slate-700"
                         >
-                            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 ${interactionModal.type === 'test' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
-                                <i className={`fas ${interactionModal.type === 'test' ? 'fa-hourglass-half' : 'fa-cloud-upload-alt'} text-3xl`}></i>
+                            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                                <i className="fas fa-hourglass-half text-3xl"></i>
                             </div>
                             <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">{interactionModal.data.title}</h3>
-                            <p className="text-gray-500 dark:text-slate-400 mb-8 font-medium">{interactionModal.type === 'test' ? 'Get ready. The timer will start as soon as you begin.' : 'Securely upload your completed work here.'}</p>
+                            <p className="text-gray-500 dark:text-slate-400 mb-8 font-medium">Get ready. The timer will start as soon as you begin.</p>
                             <div className="flex gap-4">
                                 <button onClick={() => setInteractionModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
-                                <button onClick={executeInteraction} className={`flex-1 text-white py-3 rounded-xl font-bold shadow-lg transition-all ${interactionModal.type === 'test' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200 dark:shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none'}`}>
-                                    {interactionModal.type === 'test' ? 'Start Test' : 'Upload File'}
+                                <button onClick={executeInteraction} className="flex-1 text-white py-3 rounded-xl font-bold shadow-lg transition-all bg-purple-600 hover:bg-purple-700 shadow-purple-200 dark:shadow-none">
+                                    Start Test
                                 </button>
                             </div>
                         </motion.div>

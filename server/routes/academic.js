@@ -49,12 +49,34 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
+
+const fileFilter = (req, file, cb) => {
+  const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Only PDF and image files are allowed'));
+  }
+};
+
 const upload = multer({ 
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter
 });
 router.get('/submissions', getSubmissions);
-router.post('/submissions', upload.single('file'), createSubmission);
+
+router.post('/submissions', (req, res, next) => {
+  upload.single('file')(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: 'Upload Error: ' + err.message });
+    } else if (err) {
+      return res.status(500).json({ error: 'Unknown Error: ' + err.message });
+    }
+    createSubmission(req, res);
+  });
+});
+
 router.patch('/submissions/:id', updateSubmission);
 
 export default router;
