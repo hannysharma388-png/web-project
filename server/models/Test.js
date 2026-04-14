@@ -5,6 +5,7 @@ const testSchema = new mongoose.Schema({
   duration: { type: Number, required: true },
   marks: { type: Number, required: true },
   dueDate: { type: Date, required: true },
+  courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 

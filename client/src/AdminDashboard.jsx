@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
+import AnalyticsView from './components/AnalyticsView';
 
 export default function AdminDashboard() {
     const [user, setUser] = useState(null);
@@ -110,6 +111,7 @@ export default function AdminDashboard() {
                 <nav className="flex-1 py-6 overflow-y-auto space-y-1">
                     {[
                         { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
+                        { id: 'analytics', label: 'Analytics', icon: 'fa-chart-pie' },
                         { id: 'students', label: 'Manage Students', icon: 'fa-user-graduate' },
                         { id: 'faculty', label: 'Manage Faculty', icon: 'fa-chalkboard-teacher' },
                         { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
@@ -189,6 +191,11 @@ export default function AdminDashboard() {
                                         </>
                                     )}
                                 </div>
+                            )}
+
+                            {/* Analytics Tab */}
+                            {activeTab === 'analytics' && (
+                                <AnalyticsView role="admin" />
                             )}
 
                             {/* Students Tab */}

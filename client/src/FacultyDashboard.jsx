@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
+import AnalyticsView from './components/AnalyticsView';
 import api from './utils/api';
 
 export default function FacultyDashboard() {
@@ -28,6 +29,7 @@ export default function FacultyDashboard() {
     const [date, setDate] = useState('');
     const [marks, setMarks] = useState(0);
     const [duration, setDuration] = useState(45);
+    const [formCourseId, setFormCourseId] = useState('');
     const [toast, setToast] = useState('');
 
     const navigate = useNavigate();
@@ -135,7 +137,8 @@ export default function FacultyDashboard() {
 
     const handleSubmit = async (e, type) => {
         e.preventDefault();
-        const payload = { title, dueDate: date, marks, authorId: user.id };
+        if (!formCourseId) return showToast('Please select a course');
+        const payload = { title, dueDate: date, marks, authorId: user.id, courseId: formCourseId };
         
         try {
             if (type === 'test') {
@@ -179,6 +182,7 @@ export default function FacultyDashboard() {
                         { id: 'tests', label: 'Tests', icon: 'fa-tasks' },
                         { id: 'assignments', label: 'Assignments', icon: 'fa-file-alt' },
                         { id: 'records', label: 'Records', icon: 'fa-clipboard-check' },
+                        { id: 'analytics', label: 'Analytics', icon: 'fa-chart-pie' },
                         { id: 'notices', label: 'Notices', icon: 'fa-bullhorn' }
                     ].map(tab => (
                         <button 
@@ -503,6 +507,11 @@ export default function FacultyDashboard() {
                                 )
                             )}
 
+                            {/* Analytics Tab */}
+                            {activeTab === 'analytics' && (
+                                <AnalyticsView role="faculty" userId={user.id} />
+                            )}
+
                             {/* Notices Tab */}
                             {activeTab === 'notices' && (
                                 isLoading ? (
@@ -586,6 +595,10 @@ export default function FacultyDashboard() {
                                 <>
                                     <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white pb-4 border-b border-gray-100 dark:border-slate-700/50">Create New {modal.type === 'test' ? 'Test' : 'Assignment'}</h3>
                                     <form onSubmit={(e) => handleSubmit(e, modal.type)} className="space-y-4">
+                                        <select required onChange={e => setFormCourseId(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all">
+                                            <option value="">Select Course</option>
+                                            {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
+                                        </select>
                                         <input type="text" placeholder="Title" required onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
                                         <input type="date" required onChange={e => setDate(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
                                         <input type="number" placeholder="Marks" required onChange={e => setMarks(e.target.value)} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white outline-none transition-all" />
