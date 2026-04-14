@@ -7,6 +7,7 @@ import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
 import AnalyticsView from './components/AnalyticsView';
+import api from './utils/api';
 
 export default function AdminDashboard() {
     const [user, setUser] = useState(null);
@@ -35,29 +36,28 @@ export default function AdminDashboard() {
     const navigate = useNavigate();
     const { isDarkMode, toggleTheme } = useTheme();
     const queryClient = useQueryClient();
-    const API_BASE = 'http://localhost:5001/api';
 
     const { data: students = [], isLoading: isStuLoading } = useQuery({
         queryKey: ['users', 'student'],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/users?role=student`);
-            return res.json();
+            const res = await api.get('/users?role=student');
+            return Array.isArray(res.data) ? res.data : [];
         }
     });
 
     const { data: faculty = [], isLoading: isFacLoading } = useQuery({
         queryKey: ['users', 'faculty'],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/users?role=faculty`);
-            return res.json();
+            const res = await api.get('/users?role=faculty');
+            return Array.isArray(res.data) ? res.data : [];
         }
     });
 
     const { data: notices = [], isLoading: isNotLoading } = useQuery({
         queryKey: ['notices'],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/notices`);
-            return res.json();
+            const res = await api.get('/notices');
+            return Array.isArray(res.data) ? res.data : [];
         }
     });
 
@@ -95,12 +95,12 @@ export default function AdminDashboard() {
     };
 
     const deleteUser = async (id, role) => {
-        await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+        await api.delete(`/users/${id}`);
         queryClient.invalidateQueries({ queryKey: ['users', role] });
     };
 
     const deleteNotice = async (id) => {
-        await fetch(`${API_BASE}/notices/${id}`, { method: 'DELETE' });
+        await api.delete(`/notices/${id}`);
         queryClient.invalidateQueries({ queryKey: ['notices'] });
     };
 
@@ -110,11 +110,7 @@ export default function AdminDashboard() {
         if (modal.type === 'student') payload.roleAttr = formData.roleAttr; 
         if (modal.type === 'faculty') payload.roleAttr = formData.roleAttr; 
         
-        await fetch(`${API_BASE}/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        await api.post('/users', payload);
         
         queryClient.invalidateQueries({ queryKey: ['users', modal.type] });
         setModal({ show: false, type: '' });
@@ -122,11 +118,7 @@ export default function AdminDashboard() {
 
     const handleNoticeSubmit = async (e) => {
         e.preventDefault();
-        await fetch(`${API_BASE}/notices`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...noticeData, author: user.name })
-        });
+        await api.post('/notices', { ...noticeData, author: user.name });
         queryClient.invalidateQueries({ queryKey: ['notices'] });
         setModal({ show: false, type: '' });
     };

@@ -10,7 +10,7 @@
 7. ✅ Project fully functional
 
 ## Login Credentials
-**Admin:** admin@jis.edu / `admin123` → /admin
+**Admin:** harshit.sharma@jis.edu / `admin123` → /admin
 **Faculty:** e.g. rajesh.kumar@jis.edu / `college123` → /faculty  
 **Student:** e.g. aarav.sharma@jis.edu / `college123` → /student
 
