@@ -6,6 +6,8 @@ import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
 import AnalyticsView from './components/AnalyticsView';
 import api from './utils/api';
+import { useSocket } from './context/SocketContext';
+import { toast as hotToast } from 'react-hot-toast';
 
 export default function FacultyDashboard() {
     const [user, setUser] = useState(null);
@@ -49,6 +51,23 @@ export default function FacultyDashboard() {
         setUser(parsedUser);
         refreshData(parsedUser.id);
     }, [navigate]);
+
+    const socket = useSocket();
+
+    useEffect(() => {
+        if (socket && user) {
+            const handleNewSubmission = (submission) => {
+                hotToast.success(`New submission received for grading!`);
+                refreshData(user.id);
+            };
+
+            socket.on('new_submission', handleNewSubmission);
+
+            return () => {
+                socket.off('new_submission', handleNewSubmission);
+            };
+        }
+    }, [socket, user]);
 
     const refreshData = async (userId) => {
         if (!userId) return;
@@ -488,16 +507,30 @@ export default function FacultyDashboard() {
                                                             )}
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <button 
-                                                                onClick={() => {
-                                                                    setModal({ show: true, type: 'grade', data: sub });
-                                                                    setGrade(sub.grade || '');
-                                                                    setFeedback(sub.feedback || '');
-                                                                }}
-                                                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                                            >
-                                                                <i className="fas fa-edit"></i> {sub.grade !== undefined ? 'Re-grade' : 'Grade'}
-                                                            </button>
+                                                            <div className="flex gap-2 items-center">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setModal({ show: true, type: 'grade', data: sub });
+                                                                        setGrade(sub.grade || '');
+                                                                        setFeedback(sub.feedback || '');
+                                                                    }}
+                                                                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 block"
+                                                                >
+                                                                    <i className="fas fa-edit"></i> {sub.grade !== undefined ? 'Re-grade' : 'Grade'}
+                                                                </button>
+                                                                {sub.filePath && (
+                                                                    <a 
+                                                                        href={`http://localhost:5001/${sub.filePath}`} 
+                                                                        target="_blank" 
+                                                                        rel="noreferrer" 
+                                                                        download 
+                                                                        title="Download Work"
+                                                                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold text-sm bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                                                    >
+                                                                        <i className="fas fa-download"></i> Download
+                                                                    </a>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}

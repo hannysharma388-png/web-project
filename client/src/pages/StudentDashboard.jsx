@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AttendanceTable from '../components/AttendanceTable';
 import TimetableGrid from '../components/TimetableGrid';
+import SubmissionModal from '../components/SubmissionModal';
 
 export default function StudentDashboard() {
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [tests, setTests] = useState([]);
     const [assignments, setAssignments] = useState([]);
+    const [submissions, setSubmissions] = useState([]);
     const [notices, setNotices] = useState([]);
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [interactionModal, setInteractionModal] = useState({ show: false, type: '', data: null });
+    const [uploadModal, setUploadModal] = useState({ show: false, data: null });
     const [toast, setToast] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -37,19 +40,28 @@ export default function StudentDashboard() {
 
     const refreshData = async () => {
         try {
-            const testRes = await fetch(`${API_BASE}/academic/tests`);
+            const token = localStorage.getItem('token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const testRes = await fetch(`${API_BASE}/academic/tests`, { headers });
             setTests(await testRes.json());
 
-            const assignRes = await fetch(`${API_BASE}/academic/assignments`);
+            const assignRes = await fetch(`${API_BASE}/academic/assignments`, { headers });
             setAssignments(await assignRes.json());
 
-            const notRes = await fetch(`${API_BASE}/notices`);
+            const userObj = JSON.parse(localStorage.getItem('user'));
+            if (userObj) {
+                const subRes = await fetch(`${API_BASE}/academic/submissions?studentId=${userObj._id}`, { headers });
+                setSubmissions(await subRes.json());
+            }
+
+            const notRes = await fetch(`${API_BASE}/notices`, { headers });
             setNotices(await notRes.json());
 
-            const courseRes = await fetch(`${API_BASE}/academic/courses`);
+            const courseRes = await fetch(`${API_BASE}/academic/courses`, { headers });
             setCourses(await courseRes.json());
 
-            const stuRes = await fetch(`${API_BASE}/users?role=student`);
+            const stuRes = await fetch(`${API_BASE}/users?role=student`, { headers });
             setStudents(await stuRes.json());
         } catch (err) {
             console.error('API Error:', err);
@@ -173,13 +185,23 @@ export default function StudentDashboard() {
 
                     {activeTab === 'assignments' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {assignments.map(a => (
-                                <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border transform hover:-translate-y-1 transition duration-300">
-                                    <h3 className="text-lg font-semibold">{a.title}</h3>
-                                    <p className="text-sm text-red-500 mt-2 font-bold">Due: {new Date(a.dueDate).toLocaleDateString()}</p>
-                                    <button onClick={() => setInteractionModal({ show: true, type: 'assignment', data: a })} className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg">Submit Work</button>
+                            {assignments.map(a => {
+                                const submission = submissions.find(s => s.assignmentId?._id === a._id || s.assignmentId === a._id);
+                                return (
+                                <div key={a._id} className="bg-white rounded-2xl p-6 shadow-sm border transform hover:-translate-y-1 transition duration-300 flex flex-col justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold">{a.title}</h3>
+                                        <p className="text-sm text-red-500 mt-2 font-bold">Due: {new Date(a.dueDate).toLocaleDateString()}</p>
+                                    </div>
+                                    {submission ? (
+                                        <a href={`http://localhost:5001/${submission.filePath}`} download target="_blank" rel="noreferrer" className="mt-4 w-full bg-green-500/10 text-green-700 border border-green-200 py-2 rounded-lg text-center font-medium hover:bg-green-50 transition-colors inline-block">
+                                            <i className="fas fa-check-circle mr-2"></i>Downloaded Submitted File
+                                        </a>
+                                    ) : (
+                                        <button onClick={() => setUploadModal({ show: true, data: a })} className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Submit Work</button>
+                                    )}
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     )}
 
@@ -235,20 +257,30 @@ export default function StudentDashboard() {
             </main>
 
             {/* Modals Simulation */}
-            {interactionModal.show && (
+            {interactionModal.show && interactionModal.type === 'test' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl p-8 max-w-lg w-full text-center">
-                        <i className={`fas ${interactionModal.type === 'test' ? 'fa-hourglass-half text-purple-500' : 'fa-cloud-upload-alt text-indigo-500'} text-5xl mb-4`}></i>
+                        <i className="fas fa-hourglass-half text-purple-500 text-5xl mb-4"></i>
                         <h3 className="text-2xl font-bold mb-2">{interactionModal.data.title}</h3>
-                        <p className="text-gray-600 mb-6">{interactionModal.type === 'test' ? 'Prepare to take the quiz.' : 'Upload your PDF work here.'}</p>
+                        <p className="text-gray-600 mb-6">Prepare to take the quiz.</p>
                         <div className="flex gap-4">
                             <button onClick={() => setInteractionModal({ show: false, type: '', data: null })} className="flex-1 bg-gray-200 py-3 rounded-lg">Cancel</button>
-                            <button onClick={executeInteraction} className={`flex-1 text-white py-3 rounded-lg ${interactionModal.type === 'test' ? 'bg-purple-600' : 'bg-indigo-600'}`}>
-                                {interactionModal.type === 'test' ? 'Submit Test' : 'Upload'}
+                            <button onClick={executeInteraction} className="flex-1 text-white py-3 rounded-lg bg-purple-600 hover:bg-purple-700">
+                                Submit Test
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Submissions Modal */}
+            {uploadModal.show && (
+                <SubmissionModal 
+                    isOpen={uploadModal.show} 
+                    onClose={() => setUploadModal({ show: false, data: null })} 
+                    assignment={uploadModal.data} 
+                    onSuccess={() => { setToast('Assignment Submitted!'); setUploadModal({ show: false, data: null }); refreshData(); }}
+                />
             )}
 
             {/* Toast */}

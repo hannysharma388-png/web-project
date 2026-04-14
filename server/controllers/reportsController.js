@@ -1,4 +1,5 @@
 // server/controllers/reportsController.js
+import mongoose from 'mongoose';
 import Attendance from '../models/Attendance.js';
 import Submission from '../models/Submission.js';
 import Course from '../models/Course.js';
@@ -87,7 +88,7 @@ export const getAttendanceTrends = async (req, res) => {
     }
 
     const attendance = await Attendance.aggregate([
-      { $match: { ...match, classId: match.classId ? new import('mongoose').Types.ObjectId(match.classId) : { $exists: true } } },
+      { $match: { ...match, classId: match.classId ? new mongoose.Types.ObjectId(match.classId) : { $exists: true } } },
       {
         $group: {
           _id: { 

@@ -24,7 +24,17 @@ export const getAssignments = async (req, res) => {
 };
 
 export const createAssignment = async (req, res) => {
-  try { const assignment = new Assignment(req.body); await assignment.save(); res.status(201).json(assignment); } catch(err) { res.status(500).json({error: err.message}); }
+  try { 
+    const assignment = new Assignment(req.body); 
+    await assignment.save(); 
+    
+    const io = req.app.get('io');
+    if (io) {
+      io.to('student').emit('new_assignment', assignment);
+    }
+
+    res.status(201).json(assignment); 
+  } catch(err) { res.status(500).json({error: err.message}); }
 };
 
 export const deleteAssignment = async (req, res) => {
@@ -138,6 +148,21 @@ export const createSubmission = async (req, res) => {
   try { 
     const submission = new Submission({ ...req.body, filePath: req.file ? req.file.path : null });
     await submission.save(); 
+
+    let targetFacultyId = null;
+    if (submission.assignmentId) {
+      const parentAssignment = await Assignment.findById(submission.assignmentId);
+      if (parentAssignment) targetFacultyId = parentAssignment.authorId;
+    } else if (submission.testId) {
+      const parentTest = await Test.findById(submission.testId);
+      if (parentTest) targetFacultyId = parentTest.authorId;
+    }
+
+    const io = req.app.get('io');
+    if (io && targetFacultyId) {
+      io.to(`user_${targetFacultyId.toString()}`).emit('new_submission', submission);
+    }
+
     res.status(201).json(submission); 
   } catch(err) { res.status(500).json({error: err.message}); }
 };

@@ -57,6 +57,15 @@ export default function AnalyticsView({ role, userId }) {
     // UI state
     const [isLoading, setIsLoading] = useState(true);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [drilldown, setDrilldown] = useState(null);
+
+    const handleDrilldown = (data, type) => {
+        if (data) {
+            setDrilldown({ data, type });
+        }
+    };
+
+    const closeDrilldown = () => setDrilldown(null);
 
     const onPieEnter = (_, index) => {
         setActiveIndex(index);
@@ -196,6 +205,8 @@ export default function AnalyticsView({ role, userId }) {
                                         fill="#8884d8"
                                         dataKey="value"
                                         onMouseEnter={onPieEnter}
+                                        onClick={(data) => handleDrilldown(data, 'Attendance Status')}
+                                        className="cursor-pointer"
                                     >
                                         {summary.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -215,7 +226,16 @@ export default function AnalyticsView({ role, userId }) {
                     {performance.length > 0 ? (
                         <div className="w-full h-80">
                             <ResponsiveContainer>
-                                <BarChart data={performance} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                <BarChart 
+                                    data={performance} 
+                                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                                    onClick={(state) => {
+                                        if (state && state.activePayload) {
+                                            handleDrilldown(state.activePayload[0].payload, 'Performance Details');
+                                        }
+                                    }}
+                                    className="cursor-pointer"
+                                >
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} />
                                     <YAxis hide domain={[0, 100]} />
@@ -237,7 +257,16 @@ export default function AnalyticsView({ role, userId }) {
                 {trends.length > 0 ? (
                     <div className="w-full h-96">
                         <ResponsiveContainer>
-                            <LineChart data={trends} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                            <LineChart 
+                                data={trends} 
+                                margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                                onClick={(state) => {
+                                    if (state && state.activePayload) {
+                                        handleDrilldown(state.activePayload[0].payload, 'Daily Trend Details');
+                                    }
+                                }}
+                                className="cursor-pointer"
+                            >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={10} />
                                 <YAxis axisLine={false} tickLine={false} />
@@ -253,6 +282,67 @@ export default function AnalyticsView({ role, userId }) {
                     <div className="w-full h-80 flex flex-col items-center justify-center text-gray-400"><i className="fas fa-chart-line text-4xl mb-4 text-gray-200"></i><p>No Data Available</p></div>
                 )}
             </div>
+
+            {/* Drilldown Modal */}
+            {drilldown && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-slate-700 relative">
+                        <button 
+                            onClick={closeDrilldown}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                        >
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                        
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <i className="fas fa-search-plus"></i>
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {drilldown.type}
+                            </h3>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-6 border border-gray-100 dark:border-slate-700/50">
+                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-slate-700 pb-2">
+                                Selected Metric Data
+                            </h4>
+                            <div className="space-y-3">
+                                {Object.entries(drilldown.data).map(([key, val]) => {
+                                    if (key === 'payload' || key === 'cx' || key === 'cy' || key === 'innerRadius' || key === 'outerRadius' || key === 'startAngle' || key === 'endAngle' || key === 'fill' || key === 'stroke' || key === 'tooltipPayload' || key === 'tooltipPosition') return null;
+                                    
+                                    // Format the key to be more readable
+                                    const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                                    
+                                    return (
+                                        <div key={key} className="flex justify-between items-center p-2 hover:bg-gray-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
+                                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{formattedKey}</span>
+                                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                {typeof val === 'object' ? JSON.stringify(val) : val}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
+                                <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+                                    <i className="fas fa-info-circle mr-1"></i>
+                                    Detailed breakdown is simulated based on active data point.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end">
+                            <button 
+                                onClick={closeDrilldown} 
+                                className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-800 dark:text-white rounded-xl font-medium transition-colors"
+                            >
+                                Close Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

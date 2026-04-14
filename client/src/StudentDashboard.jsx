@@ -5,6 +5,8 @@ import { useTheme } from './context/ThemeContext';
 import { SkeletonTable, SkeletonCard } from './components/ui/Skeleton';
 import EmptyState from './components/ui/EmptyState';
 import api from './utils/api';
+import { useSocket } from './context/SocketContext';
+import { toast as hotToast } from 'react-hot-toast';
 
 export default function StudentDashboard() {
     const [user, setUser] = useState(null);
@@ -37,6 +39,23 @@ export default function StudentDashboard() {
         setUser(parsedUser);
         refreshData(parsedUser.id);
     }, [navigate]);
+
+    const socket = useSocket();
+
+    useEffect(() => {
+        if (socket && user) {
+            const handleNewAssignment = (assignment) => {
+                hotToast.success(`New Assignment Created: ${assignment.title}`);
+                refreshData(user.id);
+            };
+
+            socket.on('new_assignment', handleNewAssignment);
+
+            return () => {
+                socket.off('new_assignment', handleNewAssignment);
+            };
+        }
+    }, [socket, user]);
 
     const refreshData = async (studentId) => {
         if (!studentId) return;

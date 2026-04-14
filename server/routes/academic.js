@@ -40,7 +40,19 @@ router.get('/attendance', getAttendance);
 router.post('/attendance/mark', markAttendance);
 
 // Submissions
-const upload = multer({ dest: 'uploads/submissions/' });
+import path from 'path';
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/submissions/'),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 router.get('/submissions', getSubmissions);
 router.post('/submissions', upload.single('file'), createSubmission);
 router.patch('/submissions/:id', updateSubmission);

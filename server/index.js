@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import http from 'http';
+import { Server } from 'socket.io';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -18,6 +20,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    credentials: true
+  }
+});
+
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('join_role_room', (role) => {
+    socket.join(role);
+  });
+
+  socket.on('join_user_room', (userId) => {
+    socket.join(`user_${userId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
 
 // Request Logger
 app.use((req, res, next) => {
@@ -55,7 +83,7 @@ const DB_URI = process.env.MONGODB_URI;
 mongoose.connect(DB_URI)
   .then(() => {
     console.log('Connected to MongoDB Successfully!');
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Node Server is running on port: ${PORT}`);
     });
   })
