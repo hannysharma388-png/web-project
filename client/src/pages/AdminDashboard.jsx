@@ -19,7 +19,8 @@ export default function AdminDashboard() {
     
     const [formData, setFormData] = useState({ name: '', email: '', password: '', roleAttr: '' });
     const [noticeData, setNoticeData] = useState({ title: '', content: '' });
-    const [subjectData, setSubjectData] = useState({ name: '', code: '' });
+    const [subjectData, setSubjectData] = useState({ name: '', code: '', faculty: [], sections: [] });
+    const [selectedSubjectForEdit, setSelectedSubjectForEdit] = useState(null);
     const [sectionData, setSectionData] = useState({ name: '', branch: '' });
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
@@ -153,6 +154,22 @@ export default function AdminDashboard() {
         } catch (err) {
             toast.error('Failed to create section');
             window.alert('Error: Could not create section.');
+        }
+    };
+
+    const handleSubjectUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/academic/subjects/${selectedSubjectForEdit._id}`, {
+                faculty: selectedSubjectForEdit.faculty,
+                sections: selectedSubjectForEdit.sections
+            });
+            toast.success('Subject assignments updated!');
+            setModal({ show: false, type: '' });
+            setSelectedSubjectForEdit(null);
+            refreshData();
+        } catch (err) {
+            toast.error('Failed to update subject assignments');
         }
     };
 
@@ -371,7 +388,7 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {subjects.map(s => (
                                     <div key={s._id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col group hover:shadow-md transition-all">
-                                        <div className="flex justify-between items-start mb-6">
+                                        <div className="flex justify-between items-start mb-4">
                                             <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                                                 <i className="fas fa-book text-xl"></i>
                                             </div>
@@ -380,7 +397,34 @@ export default function AdminDashboard() {
                                             </button>
                                         </div>
                                         <h4 className="font-black text-xl text-gray-900 mb-1">{s.name}</h4>
-                                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{s.code}</p>
+                                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">{s.code}</p>
+                                        <div className="mt-auto space-y-2 pt-4 border-t border-gray-50">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-gray-400 font-bold uppercase">Faculty</span>
+                                                <span className={`font-black ${s.faculty?.length ? 'text-emerald-600' : 'text-rose-400'}`}>
+                                                    {s.faculty?.length ? `${s.faculty.length} assigned` : 'Not assigned'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-gray-400 font-bold uppercase">Sections</span>
+                                                <span className={`font-black ${s.sections?.length ? 'text-blue-600' : 'text-rose-400'}`}>
+                                                    {s.sections?.length ? `${s.sections.length} linked` : 'None linked'}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedSubjectForEdit({
+                                                        ...s,
+                                                        faculty: (s.faculty || []).map(f => f._id || f),
+                                                        sections: (s.sections || []).map(sec => sec._id || sec)
+                                                    });
+                                                    setModal({ show: true, type: 'editSubject' });
+                                                }}
+                                                className="w-full mt-1 bg-emerald-50 text-emerald-700 border border-emerald-100 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all"
+                                            >
+                                                <i className="fas fa-user-cog mr-1"></i> Assign Faculty & Sections
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -523,14 +567,70 @@ export default function AdminDashboard() {
 
             {modal.show && modal.type === 'subject' && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl p-8 max-w-md w-full">
-                        <h3 className="text-2xl font-bold mb-4">Add Subject</h3>
-                        <form onSubmit={handleSubjectSubmit} className="space-y-4">
-                            <input type="text" placeholder="Subject Name" required onChange={e => setSubjectData({...subjectData, name: e.target.value})} className="w-full px-4 py-2 border rounded" />
-                            <input type="text" placeholder="Subject Code" required onChange={e => setSubjectData({...subjectData, code: e.target.value})} className="w-full px-4 py-2 border rounded" />
-                            <div className="flex gap-4">
-                                <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
-                                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded">Create</button>
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-2xl font-bold mb-6">Add New Subject</h3>
+                        <form onSubmit={handleSubjectSubmit} className="space-y-5">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Subject Name</label>
+                                <input type="text" placeholder="e.g. Data Structures" required onChange={e => setSubjectData({...subjectData, name: e.target.value})} className="w-full px-4 py-2.5 border rounded-xl" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Subject Code</label>
+                                <input type="text" placeholder="e.g. CS301" required onChange={e => setSubjectData({...subjectData, code: e.target.value})} className="w-full px-4 py-2.5 border rounded-xl" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Assign Faculty <span className="text-gray-400 font-normal">(select one or more)</span></label>
+                                <div className="border border-gray-200 rounded-xl p-3 max-h-36 overflow-y-auto space-y-2 bg-gray-50">
+                                    {faculty.length === 0 && <p className="text-xs text-gray-400">No faculty found. Add faculty first.</p>}
+                                    {faculty.map(f => (
+                                        <label key={f._id} className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
+                                            <input
+                                                type="checkbox"
+                                                checked={subjectData.faculty.includes(f._id)}
+                                                onChange={() => setSubjectData(prev => ({
+                                                    ...prev,
+                                                    faculty: prev.faculty.includes(f._id)
+                                                        ? prev.faculty.filter(x => x !== f._id)
+                                                        : [...prev.faculty, f._id]
+                                                }))}
+                                                className="w-4 h-4 text-emerald-600"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-800">{f.name}</p>
+                                                <p className="text-xs text-gray-400">{f.email}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Link Sections <span className="text-gray-400 font-normal">(select one or more)</span></label>
+                                <div className="border border-gray-200 rounded-xl p-3 max-h-36 overflow-y-auto space-y-2 bg-gray-50">
+                                    {sections.length === 0 && <p className="text-xs text-gray-400">No sections found. Add sections first.</p>}
+                                    {sections.map(s => (
+                                        <label key={s._id} className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
+                                            <input
+                                                type="checkbox"
+                                                checked={subjectData.sections.includes(s._id)}
+                                                onChange={() => setSubjectData(prev => ({
+                                                    ...prev,
+                                                    sections: prev.sections.includes(s._id)
+                                                        ? prev.sections.filter(x => x !== s._id)
+                                                        : [...prev.sections, s._id]
+                                                }))}
+                                                className="w-4 h-4 text-blue-600"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                                                <p className="text-xs text-gray-400">{s.branch}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex gap-4 pt-2">
+                                <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-3 rounded-xl font-bold">Cancel</button>
+                                <button type="submit" className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">Create Subject</button>
                             </div>
                         </form>
                     </div>
@@ -553,6 +653,71 @@ export default function AdminDashboard() {
                             <div className="flex gap-4 pt-2">
                                 <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-3 rounded-xl font-bold">Cancel</button>
                                 <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">Create Section</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {modal.show && modal.type === 'editSubject' && selectedSubjectForEdit && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-2xl font-bold mb-1">Assign Faculty & Sections</h3>
+                        <p className="text-sm text-gray-500 mb-6">Subject: <span className="font-bold text-gray-900">{selectedSubjectForEdit.name}</span> ({selectedSubjectForEdit.code})</p>
+                        <form onSubmit={handleSubjectUpdate} className="space-y-5">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Faculty Members</label>
+                                <div className="border border-gray-200 rounded-xl p-3 max-h-44 overflow-y-auto space-y-2 bg-gray-50">
+                                    {faculty.length === 0 && <p className="text-xs text-gray-400">No faculty found.</p>}
+                                    {faculty.map(f => (
+                                        <label key={f._id} className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSubjectForEdit.faculty.includes(f._id)}
+                                                onChange={() => setSelectedSubjectForEdit(prev => ({
+                                                    ...prev,
+                                                    faculty: prev.faculty.includes(f._id)
+                                                        ? prev.faculty.filter(x => x !== f._id)
+                                                        : [...prev.faculty, f._id]
+                                                }))}
+                                                className="w-4 h-4 text-emerald-600"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-800">{f.name}</p>
+                                                <p className="text-xs text-gray-400">{f.email}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Sections</label>
+                                <div className="border border-gray-200 rounded-xl p-3 max-h-44 overflow-y-auto space-y-2 bg-gray-50">
+                                    {sections.length === 0 && <p className="text-xs text-gray-400">No sections found.</p>}
+                                    {sections.map(s => (
+                                        <label key={s._id} className="flex items-center gap-3 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSubjectForEdit.sections.includes(s._id)}
+                                                onChange={() => setSelectedSubjectForEdit(prev => ({
+                                                    ...prev,
+                                                    sections: prev.sections.includes(s._id)
+                                                        ? prev.sections.filter(x => x !== s._id)
+                                                        : [...prev.sections, s._id]
+                                                }))}
+                                                className="w-4 h-4 text-blue-600"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-800">{s.name}</p>
+                                                <p className="text-xs text-gray-400">{s.branch}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex gap-4 pt-2">
+                                <button type="button" onClick={() => { setModal({ show: false, type: '' }); setSelectedSubjectForEdit(null); }} className="flex-1 bg-gray-200 py-3 rounded-xl font-bold">Cancel</button>
+                                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">Save Assignments</button>
                             </div>
                         </form>
                     </div>

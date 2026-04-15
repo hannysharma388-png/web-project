@@ -167,6 +167,18 @@ export const deleteSubject = async (req, res) => {
   try { await Subject.findByIdAndDelete(req.params.id); res.json({msg: 'Deleted'}); } catch(err) { res.status(500).json({error: err.message}); }
 };
 
+export const updateSubject = async (req, res) => {
+  try {
+    const updated = await Subject.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    ).populate('faculty sections', 'name email');
+    if (!updated) return res.status(404).json({ error: 'Subject not found' });
+    res.json(updated);
+  } catch(err) { res.status(500).json({ error: err.message }); }
+};
+
 // Sections
 export const getSections = async (req, res) => {
   try { res.json(await Section.find().populate('students', 'name email')); } catch(err) { res.status(500).json({error: err.message}); }

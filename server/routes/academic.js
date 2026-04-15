@@ -4,7 +4,7 @@ import path from 'path';
 import { 
   getTests, createTest, deleteTest, getTestById,
   getAssignments, createAssignment, deleteAssignment,
-  getSubjects, getMySubjects, createSubject, deleteSubject,
+  getSubjects, getMySubjects, createSubject, deleteSubject, updateSubject,
   getSections, getMySections, createSection, deleteSection,
   getTimetable, getFacultyTimetable, getStudentTimetable, createTimetable, updateTimetableSlot, deleteTimetable,
   getAttendance, markAttendance,
@@ -52,6 +52,7 @@ router.delete('/assignments/:id', deleteAssignment);
 router.get('/subjects', getSubjects);
 router.get('/subjects/faculty', getMySubjects);
 router.post('/subjects', createSubject);
+router.patch('/subjects/:id', updateSubject);
 router.delete('/subjects/:id', deleteSubject);
 
 // Sections
