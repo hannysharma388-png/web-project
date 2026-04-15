@@ -25,7 +25,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'https://web-project-gnxh.vercel.app',
+      ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(o => o.trim()) : [])],
     credentials: true,
     methods: ["GET", "POST"]
   }
@@ -56,11 +57,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL,
+// Support multiple comma-separated origins + hardcoded production fallback
+const allowedOrigins = [
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(o => o.trim()) : []),
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://web-project-gnxh.vercel.app'
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`CORS blocked for origin: ${origin}`);
+    return callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(helmet()); // Security headers
 app.use(express.json());
 app.use(cookieParser());
@@ -84,7 +102,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 const DB_URI = process.env.MONGODB_URI;
 
 mongoose.connect(DB_URI)
