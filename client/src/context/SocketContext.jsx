@@ -12,8 +12,8 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         if (user) {
-            // Initiate Socket connection
-            const newSocket = io('http://localhost:5001', {
+            const serverUrl = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') : 'http://localhost:10000';
+            const newSocket = io(serverUrl, {
                 withCredentials: true,
             });
             

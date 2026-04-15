@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import axios from 'axios';
+import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
@@ -61,11 +61,7 @@ const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5001/api/academic/submissions', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        },
+      await api.post('/academic/submissions', formData, {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
@@ -114,7 +110,7 @@ const SubmissionModal = ({ isOpen, onClose, assignment, onSuccess }) => {
               <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Upload your submission file</p>
               {assignment.pdfFile && (
                 <a 
-                  href={`http://localhost:5001/${assignment.pdfFile}`} 
+                  href={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${assignment.pdfFile}`} 
                   download 
                   target="_blank" 
                   rel="noreferrer"

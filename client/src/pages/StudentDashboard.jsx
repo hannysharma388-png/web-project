@@ -24,6 +24,7 @@ export default function StudentDashboard() {
     const [testModal, setTestModal] = useState({ show: false, data: null });
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const navigate = useNavigate();
 
@@ -98,20 +99,33 @@ export default function StudentDashboard() {
     };
 
     return (
-        <div className="bg-gray-50 font-inter dashboard-container flex">
+        <div className="bg-gray-50 font-inter min-h-screen relative flex">
+            {/* Sidebar Overlay for Mobile */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden transition-opacity" 
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="sidebar w-72 bg-gradient-to-b from-indigo-950 via-blue-900 to-slate-900 text-white fixed h-screen flex flex-col shadow-2xl z-50">
+            <aside className={`sidebar w-72 bg-gradient-to-b from-indigo-950 via-blue-900 to-slate-900 text-white fixed h-screen flex flex-col shadow-2xl z-[60] transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="sidebar-header p-6 border-b border-slate-700/50 flex flex-col">
                     <h2 className="text-lg font-bold">JIS UNIVERSITY</h2>
                     <p className="text-xs text-slate-400 font-medium uppercase tracking-tight">Student Success Portal</p>
                 </div>
                 <nav className="sidebar-nav flex-1 py-6 overflow-y-auto">
-                    {sidebarTabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`nav-item w-full flex items-center gap-3 px-5 py-3.5 mx-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-white/10 shadow-inner' : 'hover:bg-white/5 opacity-70 hover:opacity-100'}`}>
+                        <button 
+                            key={tab.id} 
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                setIsSidebarOpen(false);
+                            }} 
+                            className={`nav-item w-full flex items-center gap-3 px-5 py-3.5 mx-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-white/10 shadow-inner' : 'hover:bg-white/5 opacity-70 hover:opacity-100'}`}
+                        >
                             <i className={`fas ${tab.icon} shrink-0 w-5`}></i>
                             <span className="font-medium">{tab.label}</span>
                         </button>
-                    ))}
                 </nav>
                 <div className="p-4 border-t border-slate-700/50">
                     <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl hover:bg-red-500/10 text-red-400 transition-all">
@@ -120,9 +134,17 @@ export default function StudentDashboard() {
                 </div>
             </aside>
 
-            <main className="main-content flex-1 ml-72 min-h-screen">
-                <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <h1 className="text-xl font-semibold text-gray-800 tracking-tight">{activeTab?.toUpperCase() || 'OVERVIEW'}</h1>
+            <main className="main-content flex-1 lg:ml-72 min-h-screen transition-all duration-300">
+                <header className="content-header bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex justify-between items-center sticky top-0 z-40">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                            <i className="fas fa-bars text-xl"></i>
+                        </button>
+                        <h1 className="text-lg lg:text-xl font-semibold text-gray-800 tracking-tight">{activeTab?.toUpperCase() || 'OVERVIEW'}</h1>
+                    </div>
                     <div className="flex items-center gap-4 pl-4 border-l border-gray-100">
                         <div className="flex flex-col text-right">
                             <p className="text-sm font-bold text-gray-900 leading-tight">{user?.name || 'Student'}</p>
@@ -208,13 +230,13 @@ export default function StudentDashboard() {
                                     
                                     <div className="mt-auto space-y-3">
                                         {a.pdfFile && (
-                                            <a href={`http://localhost:5001/${a.pdfFile}`} download target="_blank" rel="noreferrer" className="w-full bg-blue-50 text-blue-700 border border-blue-100 py-3 text-sm rounded-xl text-center font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
+                                            <a href={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${a.pdfFile}`} download target="_blank" rel="noreferrer" className="w-full bg-blue-50 text-blue-700 border border-blue-100 py-3 text-sm rounded-xl text-center font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
                                                 <i className="fas fa-file-download"></i> Question Paper
                                             </a>
                                         )}
                                         
                                         {submission ? (
-                                            <a href={`http://localhost:5001/${submission.file}`} download target="_blank" rel="noreferrer" className="w-full block bg-emerald-600 text-white py-3.5 rounded-2xl text-sm text-center font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
+                                            <a href={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${submission.file}`} download target="_blank" rel="noreferrer" className="w-full block bg-emerald-600 text-white py-3.5 rounded-2xl text-sm text-center font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
                                                 <i className="fas fa-check-circle mr-2"></i> My Submission
                                             </a>
                                         ) : isPastDue ? (

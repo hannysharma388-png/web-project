@@ -13,6 +13,8 @@ import userRoutes from './routes/users.js';
 import academicRoutes from './routes/academic.js';
 import noticeRoutes from './routes/notices.js';
 import reportsRoutes from './routes/reports.js';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -23,8 +25,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
-    credentials: true
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+    methods: ["GET", "POST"]
   }
 });
 
@@ -54,10 +57,8 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
+  origin: process.env.CLIENT_URL,
   credentials: true
 }));
 app.use(helmet()); // Security headers
@@ -74,16 +75,29 @@ app.use('/api/academic', academicRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/reports', reportsRoutes);
 
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'online', 
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 const PORT = process.env.PORT || 5001;
 const DB_URI = process.env.MONGODB_URI;
 
 mongoose.connect(DB_URI)
   .then(() => {
-    console.log('Connected to MongoDB Successfully!');
+    console.log('✅ Connected to MongoDB Successfully!');
     server.listen(PORT, () => {
-      console.log(`Node Server is running on port: ${PORT}`);
+      console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port: ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('Database connection failed:', err);
+    console.error('❌ Database connection failed!');
+    console.error('Error Details:', err.message);
+    if (err.message.includes('IP address')) {
+      console.error('TIP: Check if your IP is whitelisted in MongoDB Atlas Network Access.');
+    }
   });

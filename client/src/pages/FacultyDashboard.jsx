@@ -28,6 +28,7 @@ export default function FacultyDashboard() {
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -178,17 +179,32 @@ export default function FacultyDashboard() {
     };
 
     return (
-        <div className="bg-gray-50 font-inter dashboard-container flex">
+        <div className="bg-gray-50 font-inter min-h-screen relative flex">
+            {/* Sidebar Overlay for Mobile */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[55] lg:hidden transition-opacity" 
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="sidebar w-72 bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 text-white fixed h-screen flex flex-col shadow-2xl z-50">
+            <aside className={`sidebar w-72 bg-gradient-to-b from-emerald-900 via-teal-900 to-slate-900 text-white fixed h-screen flex flex-col shadow-2xl z-[60] transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="sidebar-header p-6 border-b border-slate-700/50 flex flex-col">
                     <h2 className="text-lg font-bold">JIS UNIVERSITY</h2>
                     <p className="text-xs text-slate-400">Faculty Portal</p>
                 </div>
                 <nav className="sidebar-nav flex-1 py-4 overflow-y-auto">
                     {sidebarTabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`nav-item w-full flex items-center gap-3 px-5 py-3.5 mx-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-800/80 active' : 'hover:bg-slate-800/80'}`}>
-                            <i className={`fas ${tab.icon} shrink-0`}></i>
+                        <button 
+                            key={tab.id} 
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                setIsSidebarOpen(false);
+                            }} 
+                            className={`nav-item w-full flex items-center gap-3 px-5 py-3.5 mx-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-800/80 active' : 'hover:bg-slate-800/80'}`}
+                        >
+                            <i className={`fas ${tab.icon} shrink-0 w-5 text-center`}></i>
                             <span>{tab.label}</span>
                         </button>
                     ))}
@@ -201,9 +217,17 @@ export default function FacultyDashboard() {
             </aside>
 
             {/* Main Content */}
-            <main className="main-content flex-1 ml-72 min-h-screen">
-                <header className="content-header bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <h1 className="text-xl font-semibold text-gray-800">{activeTab?.toUpperCase() || 'DASHBOARD'}</h1>
+            <main className="main-content flex-1 lg:ml-72 min-h-screen transition-all duration-300">
+                <header className="content-header bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex justify-between items-center sticky top-0 z-40">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                            <i className="fas fa-bars text-xl"></i>
+                        </button>
+                        <h1 className="text-lg lg:text-xl font-semibold text-gray-800 tracking-tight">{activeTab?.toUpperCase() || 'DASHBOARD'}</h1>
+                    </div>
                     <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                         <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white">{user?.name?.charAt(0) || 'F'}</div>
                         <div>

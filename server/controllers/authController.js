@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import RefreshToken from '../models/RefreshToken.js';
 
 const generateAccessToken = (user) => {
+  if (!user) throw new Error('Cannot generate token: user object is null');
   return jwt.sign(
     { id: user._id, role: user.role, roleAttr: user.roleAttr }, 
     process.env.JWT_SECRET || 'secret', 
@@ -68,6 +69,12 @@ export const refreshToken = async (req, res) => {
       await RefreshToken.findByIdAndDelete(existingToken._id);
       res.clearCookie('refreshToken');
       return res.status(403).json({ error: 'Refresh token expired' });
+    }
+
+    if (!existingToken.user) {
+      await RefreshToken.findByIdAndDelete(existingToken._id);
+      res.clearCookie('refreshToken');
+      return res.status(403).json({ error: 'User associated with this token no longer exists' });
     }
 
     const newAccessToken = generateAccessToken(existingToken.user);
