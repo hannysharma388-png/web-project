@@ -2,13 +2,14 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { 
-  getTests, createTest, deleteTest,
+  getTests, createTest, deleteTest, getTestById,
   getAssignments, createAssignment, deleteAssignment,
   getSubjects, getMySubjects, createSubject, deleteSubject,
   getSections, getMySections, createSection, deleteSection,
-  getTimetable, createTimetable, updateTimetableSlot, deleteTimetable,
+  getTimetable, getFacultyTimetable, getStudentTimetable, createTimetable, updateTimetableSlot, deleteTimetable,
   getAttendance, markAttendance,
-  getSubmissions, createSubmission, updateSubmission 
+  getSubmissions, createSubmission, updateSubmission,
+  createResult
 } from '../controllers/academicController.js';
 
 import { authenticateToken, authorizeRoles } from '../middleware/auth.js';
@@ -21,6 +22,10 @@ router.use(authenticateToken);
 router.get('/tests', getTests);
 router.post('/tests', createTest);
 router.delete('/tests/:id', deleteTest);
+router.get('/tests/:id', getTestById);
+
+// Test Results (score saving)
+router.post('/test-results', createResult);
 
 // Assignments
 const assignmentStorage = multer.diskStorage({
@@ -56,8 +61,6 @@ router.post('/sections', createSection);
 router.delete('/sections/:id', deleteSection);
 
 // Timetable
-import { getFacultyTimetable, getStudentTimetable } from '../controllers/academicController.js';
-
 router.get('/timetable/faculty', getFacultyTimetable);
 router.get('/timetable/student', getStudentTimetable);
 router.get('/timetable', getTimetable);

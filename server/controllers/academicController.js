@@ -7,6 +7,7 @@ import Timetable from '../models/Timetable.js';
 import Attendance from '../models/Attendance.js';
 import Submission from '../models/Submission.js';
 import Question from '../models/Question.js';
+import Result from '../models/Result.js';
 
 // Tests
 export const getTests = async (req, res) => {
@@ -52,6 +53,32 @@ export const createTest = async (req, res) => {
 
 export const deleteTest = async (req, res) => {
   try { await Test.findByIdAndDelete(req.params.id); res.json({msg: 'Deleted'}); } catch(err) { res.status(500).json({error: err.message}); }
+};
+
+export const getTestById = async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.id)
+      .populate('subject section', 'name code')
+      .populate('questions');
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    res.json(test);
+  } catch(err) { res.status(500).json({ error: err.message }); }
+};
+
+export const createResult = async (req, res) => {
+  try {
+    const { test, student, score } = req.body;
+    if (!test || !student || score === undefined) {
+      return res.status(400).json({ error: 'test, student, and score are required' });
+    }
+    // Upsert: allow re-taking but update score
+    const result = await Result.findOneAndUpdate(
+      { test, student },
+      { test, student, score },
+      { upsert: true, new: true }
+    );
+    res.status(201).json(result);
+  } catch(err) { res.status(500).json({ error: err.message }); }
 };
 
 // Assignments

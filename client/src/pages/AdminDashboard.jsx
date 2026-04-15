@@ -13,6 +13,7 @@ export default function AdminDashboard() {
     const [faculty, setFaculty] = useState([]);
     const [notices, setNotices] = useState([]);
     const [sections, setSections] = useState([]);
+    const [subjects, setSubjects] = useState([]);
     const [modal, setModal] = useState({ show: false, type: '' });
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
@@ -449,7 +450,7 @@ export default function AdminDashboard() {
                                 </select>
                             </div>
                             <TimetableGrid 
-                                fetchUrl={`/academic/timetable/all?${selectedSection ? `section=${selectedSection}` : ''}${selectedSubject ? `&faculty=${selectedSubject}` : ''}`} 
+                                fetchUrl={`/academic/timetable?${selectedSection ? `section=${selectedSection}` : ''}${selectedSubject ? `&faculty=${selectedSubject}` : ''}`} 
                                 isEditable={true}
                                 onRefresh={refreshData}
                             />
@@ -530,6 +531,28 @@ export default function AdminDashboard() {
                             <div className="flex gap-4">
                                 <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
                                 <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded">Create</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {modal.show && modal.type === 'section' && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+                        <h3 className="text-2xl font-bold mb-4">Create New Section</h3>
+                        <form onSubmit={handleSectionSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Section Name</label>
+                                <input type="text" placeholder="e.g. CSE-A, AI-3" required onChange={e => setSectionData({...sectionData, name: e.target.value})} className="w-full px-4 py-2 border rounded-xl" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Branch / Department</label>
+                                <input type="text" placeholder="e.g. Computer Science, Mechanical" required onChange={e => setSectionData({...sectionData, branch: e.target.value})} className="w-full px-4 py-2 border rounded-xl" />
+                            </div>
+                            <div className="flex gap-4 pt-2">
+                                <button type="button" onClick={() => setModal({ show: false, type: '' })} className="flex-1 bg-gray-200 py-3 rounded-xl font-bold">Cancel</button>
+                                <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">Create Section</button>
                             </div>
                         </form>
                     </div>

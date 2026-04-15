@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 const TestModal = ({ test, onClose, onComplete }) => {
     const [questions, setQuestions] = useState([]);
     const [answers, setAnswers] = useState({});
-    const [timeLeft, setTimeLeft] = useState(test.duration * 60);
+    const [timeLeft, setTimeLeft] = useState((test?.duration || 0) * 60);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [score, setScore] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -16,22 +16,22 @@ const TestModal = ({ test, onClose, onComplete }) => {
         // The backend model `Test` has `questions` array. If populated, we use them.
         const fetchQuestions = async () => {
             try {
-                // If questions are not populated in the test object
-                if (test.questions && typeof test.questions[0] === 'string') {
-                    // we'll need to fetch them. Since we don't have a direct route for a single test's questions,
-                    // We can either update the academicController to populate questions, or we assume it is populated.
-                    // Let's assume academicController getTests doesn't populate questions.
-                    // Wait, `Test.find(query).populate('subject section', 'name code')`
-                    // We need a route to fetch Questions.
-                } else if (test.questions && test.questions.length > 0 && typeof test.questions[0] === 'object') {
+                if (test.questions && test.questions.length > 0 && typeof test.questions[0] === 'object') {
+                    // Questions are already populated objects — use them directly
                     setQuestions(test.questions);
                     setLoading(false);
+                } else if (test.questions && test.questions.length > 0 && typeof test.questions[0] === 'string') {
+                    // Questions are ID strings — fetch the full test with populated questions
+                    const res = await api.get(`/academic/tests?role=test&id=${test._id}`);
+                    // Find our test in results or use a direct call
+                    const fullTests = res.data;
+                    const fullTest = Array.isArray(fullTests) 
+                        ? fullTests.find(t => t._id === test._id) 
+                        : fullTests;
+                    setQuestions(fullTest?.questions || []);
+                    setLoading(false);
                 } else {
-                    // Let's fetch the full test details with questions
-                    // If no explicit route, we can fetch all tests and filter but we need a route for test details.
-                    // Let's create an endpoint in our mind or assume there's one: `/academic/tests/${test._id}`
-                    const res = await api.get(`/academic/tests/${test._id}`);
-                    setQuestions(res.data.questions || []);
+                    // No questions on this test
                     setLoading(false);
                 }
             } catch (err) {
@@ -80,14 +80,16 @@ const TestModal = ({ test, onClose, onComplete }) => {
         setScore(calculatedScore);
 
         try {
-            await api.post(`/academic/results`, {
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            await api.post('/academic/test-results', {
                 test: test._id,
+                student: currentUser.id || currentUser._id,
                 score: calculatedScore
             });
             toast.success(`Test completed! You scored ${calculatedScore}/${test.marks}`);
         } catch (err) {
             console.error(err);
-            // Ignore failure if api/results doesn't exist yet, we'll implement it if missing.
+            // Score save failed silently — student can still see their score on screen
         }
     };
 

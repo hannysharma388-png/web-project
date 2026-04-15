@@ -20,8 +20,7 @@ export const SocketProvider = ({ children }) => {
             setSocket(newSocket);
 
             newSocket.on('connect', () => {
-                const role = user.roleAttr || user.role;
-                newSocket.emit('join_role_room', role);
+                newSocket.emit('join_role_room', user.role);
                 
                 if (user.id || user._id) {
                     newSocket.emit('join_user_room', user.id || user._id);

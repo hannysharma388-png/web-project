@@ -405,7 +405,8 @@ export default function FacultyDashboard() {
                                     <AttendanceTable 
                                         students={getSectionStudents()} 
                                         date={selectedDate} 
-                                        classId={selectedSubject} 
+                                        subjectId={selectedSubject}
+                                        sectionId={selectedSection}
                                         onMarkAttendance={handleMarkAttendance}
                                         role="faculty" 
                                         loading={loading}
