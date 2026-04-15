@@ -7,7 +7,7 @@ import Attendance from '../models/Attendance.js';
 import Assignment from '../models/Assignment.js';
 import Test from '../models/Test.js';
 import Notice from '../models/Notice.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 

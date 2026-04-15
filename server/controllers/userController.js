@@ -1,6 +1,6 @@
 import User from '../models/User.js';
 import Section from '../models/Section.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const getUsers = async (req, res) => {
   try {
